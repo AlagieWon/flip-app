@@ -7,10 +7,10 @@ Flip finds the single play that flipped a game: the moment the win probability s
 **Live demo:** https://alagiewon.github.io/flip-app/
 
 <p>
-  <img src="screenshots/01-flips.png" width="200" alt="Flips feed">
-  <img src="screenshots/02-lounge.png" width="200" alt="Match Lounge">
-  <img src="screenshots/03-flip-deck.png" width="200" alt="Swipe deck of a game's turning points">
-  <img src="screenshots/04-share-card.png" width="200" alt="Share card">
+  <img src="01-flips.png" width="200" alt="Flips feed">
+  <img src="02-lounge.png" width="200" alt="Match Lounge">
+  <img src="03-flip-deck.png" width="200" alt="Swipe deck of a game's turning points">
+  <img src="04-share-card.png" width="200" alt="Share card">
 </p>
 
 ## What it does
@@ -25,12 +25,12 @@ Flip finds the single play that flipped a game: the moment the win probability s
 
 Real games are tracked from public play-by-play feeds:
 
-- `tools/pull_live.py` pulls ESPN win probability and plays, plus MLB Stats API hit data (exit velocity, distance and pitch location). It then detects turning points automatically.
+- `pull_live.py` pulls ESPN win probability and plays, plus MLB Stats API hit data (exit velocity, distance and pitch location). It then detects turning points automatically.
   - Near-homers: a ball hit 330 ft or more and caught.
   - Missed ball/strike calls, measured against the strike zone.
   - Errors, rule calls and big swings.
   - Stranded rallies: missed chances to flip the game.
-- `tools/wpmodel.py` is a small baseball win-probability model built from run-expectancy and scoring-probability tables. It's used to estimate what-if scenarios on top of ESPN's line, for example "a two-run single here takes it to ~73%".
+- `wpmodel.py` is a small baseball win-probability model built from run-expectancy and scoring-probability tables. It's used to estimate what-if scenarios on top of ESPN's line, for example "a two-run single here takes it to ~73%".
 - Each play's status updates as the game goes on. A big swing is marked **held** if the advantage lasts, or **erased** if it's later undone.
 
 Games without a live feed use illustrative win-probability lines, and the app labels them that way.
