@@ -6,6 +6,8 @@ import json, math, re, subprocess, sys, os
 OUT = sys.argv[1]; DATE = sys.argv[2]
 LEAGUES = sys.argv[3:] or ['eng.1', 'esp.1', 'ita.1', 'ger.1', 'fra.1', 'usa.1', 'eng.2']
 LNAME = {'eng.1': 'Premier League', 'esp.1': 'LaLiga', 'ita.1': 'Serie A', 'ger.1': 'Bundesliga', 'fra.1': 'Ligue 1', 'usa.1': 'MLS', 'eng.2': 'Championship'}
+try: NOTES = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'notes.json')))
+except Exception: NOTES = {}
 TMP = os.path.join(os.path.dirname(os.path.abspath(OUT)), 'live_soc'); os.makedirs(TMP, exist_ok=True)
 
 def get(url, name):
@@ -179,6 +181,29 @@ def build(ev, lg):
     pick.sort(key=lambda c: c['x'])
     missed = [dict({k: v for k, v in c.items() if k not in ('score',)}) for c in pick]
     for m in missed: m['left'] = None
+    note = NOTES.get(f"soc_{ev['id']}") or {}
+    for ed in note.get('moments', []):
+        for m in moments:
+            if m['clock'] == ed['clock']:
+                m['t'] = ed['t']; m['d'] = ed.get('d', m['d']); m['cat'] = ed.get('cat', m['cat']); m['src'] = 'editorial'
+    def score_at(e0):
+        sh = sa = 0
+        for c in com:
+            t0 = c.get('text', '')
+            if (t0.startswith('Goal!') or t0.startswith('Own Goal')) and elapsed(c['time']['displayValue'], t0) < e0:
+                sc = re.search(r'Goal! .*?(\d+), .*? (\d+)\.', t0)
+                if sc: sh, sa = int(sc.group(1)), int(sc.group(2))
+        return sh, sa
+    for k, c in enumerate(note.get('calls', [])):
+        e0 = elapsed(c['clock']); sh, sa = score_at(e0); side = 'home' if c['team'] == H['team']['abbreviation'] else 'away'
+        ns = (sh + 1, sa) if side == 'home' else (sh, sa + 1); P = c.get('p', .78)
+        cur = wp_side(side, e0, sh, sa, 0, 0); exp = P * wp_side(side, e0, *ns, 0, 0) + (1 - P) * cur
+        cg = wp(e0, sh, sa, 0, 0); wg = P * wp(e0, *ns, 0, 0) + (1 - P) * cg
+        missed.append({'id': f"c{ev['id']}_{k}", 'x': round(min(1, e0 / TOT), 4), 'clock': c['clock'], 'team': c['team'], 'state': c.get('state', f"{sh}–{sa} at {c['clock']}"),
+                       't': c['t'], 'ctx': c.get('ctx', ''), 'end': c.get('d', ''), 'peak': round(cur, 1), 'endwp': round(cur, 1),
+                       'whatif': {'wp': round(exp), 'desc': "If it's given", 'label': "if it's given", 'est': True}, 'peak_g': round(cg, 1), 'wi_g': round(wg, 1),
+                       'gain': round(exp - cur), 'left': None, 'call': True, 'src': 'editorial'})
+    missed.sort(key=lambda m: m['x'])
     ht = round((45 + add1) / TOT, 3)
     ac, bc = lighten(A['team'].get('color', '')), lighten(H['team'].get('color', ''))
     return {'id': f"soc_{ev['id']}", 'sport': 'Soccer', 'league': LNAME.get(lg, lg), 'a': A['team']['abbreviation'], 'an': A['team']['shortDisplayName'],
