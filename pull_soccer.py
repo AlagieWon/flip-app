@@ -219,7 +219,20 @@ def pre_game(ev, lg):
             'b': H['team']['abbreviation'], 'bn': H['team'].get('shortDisplayName') or H['team']['abbreviation'], 'as': '', 'bs': '', 'state': 'pre',
             'clock': ev['status']['type'].get('shortDetail', ''), 'start': ev.get('date'), 'team': H['team']['abbreviation'], 'kind': 'soc', 'wpsrc': 'model',
             'ac': lighten(A['team'].get('color', '')), 'bc': lighten(H['team'].get('color', '')), 'ticks': [[0, 'KO'], [.5, 'HT'], [1, 'FT']], 'path': [], 'moments': [], 'missed': [], 'log': [],
-            'source': {'name': 'ESPN', 'url': f"https://www.espn.com/soccer/match/_/gameId/{ev['id']}"}}
+            'source': {'name': 'ESPN', 'url': f"https://www.espn.com/soccer/match/_/gameId/{ev['id']}"}, 'pre_wp': pre_odds(comp, H, A)}
+def pre_odds(comp, H, A):
+    try:
+        ml = ((comp.get('odds') or [{}])[0].get('moneyline') or {})
+        def p(side):
+            o = ((ml.get(side) or {}).get('close') or (ml.get(side) or {}).get('open') or {}).get('odds')
+            if o in (None, '', 'OFF'): return None
+            o = float(str(o).replace('EVEN', '100')); return 100 / (o + 100) if o > 0 else -o / (-o + 100)
+        ph, pa, pd = p('home'), p('away'), p('draw')
+        if ph is None or pa is None: return None
+        t = ph + pa + (pd or 0); ph, pa = ph / t, pa / t
+        fav = 'home' if ph >= pa else 'away'
+        return {'team': (H if fav == 'home' else A)['team']['abbreviation'], 'p': round(100 * max(ph, pa)), 'draw': round(100 * pd / t) if pd else None}
+    except Exception: return None
 
 games = []
 for lg in LEAGUES:
