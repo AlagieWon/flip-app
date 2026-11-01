@@ -895,6 +895,11 @@ body.bleed .reel.r2 .r2hero{top:calc(env(safe-area-inset-top,0px) + 136px)}
 .mvhint{position:absolute;right:18px;bottom:2px;font-size:11px;color:#8a8a8a;pointer-events:none;animation:mvhint 4s 1.4s both}
 @keyframes mvhint{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}
 .r2bg{cursor:pointer}
+.rr .r2bg{top:250px;height:200px;padding:0 18px}.rr .r2bg svg{width:100%;height:100%}
+.rrtag{display:inline-flex;align-items:center;gap:6px;font:600 10px/1 "Geist Mono",monospace;letter-spacing:.08em;color:#bdbdbd;border:1px solid #2a2a2a;border-radius:999px;padding:5px 8px}
+.rrtag.live{color:#fff;border-color:#5a1d1a;background:rgba(255,91,79,.12)}
+.rracts{display:flex;gap:8px;margin-top:14px}.rracts .btn{flex:1}
+.btn.wht{background:#f2f2f2;color:#0a0a0a}
 .r2tap{position:absolute;right:18px;bottom:-4px;font-size:11px;color:#8a8a8a;pointer-events:none}
 
 /* ===== first vote ===== */
@@ -1295,15 +1300,33 @@ function reel(m){const sw=swing(m);
       ${rateHTML(m)}
     </div>
   </section>`}
+function realFeed(){return REAL.filter(g=>g.moments&&g.moments.length&&g.path&&g.path.length>2).map(g=>({g,m:topSwingMoment(g)})).filter(o=>Math.abs(o.m.after-o.m.before)>=10)
+  .sort((a,b)=>(b.g.state==="in")-(a.g.state==="in")||folScore(b.g.a,b.g.b)-folScore(a.g.a,a.g.b)||Math.abs(b.m.after-b.m.before)-Math.abs(a.m.after-a.m.before)).filter((o,i,l)=>l.slice(0,i).filter(z=>z.g.sport===o.g.sport).length<4).slice(0,14)}
+function realReel({g,m}){const sw=m.after-m.before,live=g.state==="in",has=g.as!==""&&g.as!=null,aw=has&&+g.as>+g.bs,bw=has&&+g.bs>+g.as;const T=g.team;
+  const clk=live?String(g.clock).replace(/^.*? - /,""):(g.clock==="FT"?"Full time":"Final");
+  return`<section class="reel r2 rr" data-rg="${g.id}">
+    <div class="r2sb"><div class="r2sbr">${tb(g.a)}<span class="${aw?"w":""}">${esc(tname(g.a,g.an))}</span>${has?`<span class="scr ${bw?"l":""}">${esc(g.as)}</span><span class="dash">–</span><span class="scr ${aw?"l":""}">${esc(g.bs)}</span>`:`<span class="dash">vs</span>`}<span class="${bw?"w":""}">${esc(tname(g.b,g.bn))}</span>${tb(g.b)}</div><div class="r2sbm">${esc(g.league)} · ${esc(g.date||"Today")} · ${esc(clk)}</div></div>
+    <div class="r2hero"><span class="r2big ${sw<0?"dn":""}" data-rwhy="${g.id}" role="button" tabindex="0" aria-label="Swing ${sw>=0?"plus":"minus"} ${Math.abs(sw)} points. How we know">${sgn(sw)}</span><span class="r2wp">${tb(T,"sm")}${g.wpsrc==="model"?"Est. ":""}${esc(T)} win chance <b>${m.before}%</b> → <b class="${sw<0?"dn":"up"}">${m.after}%</b></span></div>
+    <div class="r2bg" data-rdeck="${g.id}" role="button" aria-label="Open every flip in this game">${sigSVG(g.path,{W:340,H:190,pad:6,sw:1.6,live})}<span class="r2tap">Tap for every flip</span></div>
+    <div class="r2body">
+      <div class="r2meta"><span class="rrtag ${live?"live":""}">${live?LIVEDOT+"LIVE":"REAL"}</span><span class="r2cat">${esc(m.cat||"Big play")} · ${esc(m.clock)}</span></div>
+      <h2 class="r2hl">${esc((hl({t:String(m.d||m.t).replace(/\s+/g," ")})||m.t).replace(/\s+/g," "))}</h2>
+      <div class="r2src"><span>Source</span><a href="${esc(g.source.url)}" target="_blank" rel="noopener noreferrer">${esc(g.wpsrc==="model"?"Flip model · ESPN events":g.source.name)} ↗</a></div>
+      <div class="rracts"><button class="btn wht sm" data-rdeck="${g.id}">Swipe the flips</button>${live?`<button class="btn ghost sm" data-room="${g.id}">Join the room</button>`:`<button class="btn ghost sm" data-rshare="${g.id}">Share card</button>`}</div>
+    </div></section>`}
 function feedOrder(){return allMoments().slice().sort((a,b)=>(S.rated[a.id]!=null)-(S.rated[b.id]!=null)||Math.abs(swing(b))-Math.abs(swing(a)))}
 function buildFeed(){
   $("#reelHead").innerHTML=`<div class="reelhead"><span class="rtabs"><span class="brand2"><b>flip</b></span><span class="note" id="headCount"></span></span><button class="pill glass" id="howBtn" style="pointer-events:auto">How it works</button></div>`;
   $("#howBtn").onclick=onboard;
-  main.innerHTML=`<div class="reels">${feedOrder().map(reel).join("")}<section class="reel divider"><div class="rdiv"><div class="eyebrow">You're caught up</div><h2 class="rhl">See every flip, ranked</h2><p class="rline">The biggest game changers, the most disputed calls, and the ones that didn't matter at all.</p><button class="btn go" onclick="">Open rankings</button></div></section></div>`;
+  main.innerHTML=`<div class="reels">${realFeed().map(realReel).join("")}${feedOrder().map(reel).join("")}<section class="reel divider"><div class="rdiv"><div class="eyebrow">You're caught up</div><h2 class="rhl">See every flip, ranked</h2><p class="rline">The biggest game changers, the most disputed calls, and the ones that didn't matter at all.</p><button class="btn go" onclick="">Open rankings</button></div></section></div>`;
   main.querySelector(".divider .btn").onclick=()=>setView("top");
   wireRate(main);refreshCounts();
   main.querySelectorAll("[data-whym]").forEach(el=>el.onclick=()=>{const m=mById(el.dataset.whym);openWhy({before:m.before,after:m.after,team:m.team,real:false,src:m.source,est:false})});
   main.querySelectorAll("[data-deckm]").forEach(el=>el.onclick=()=>{const g=momentGame(el.dataset.deckm);if(g)openDeck(g,el.dataset.deckm)});
+  main.querySelectorAll("[data-rdeck]").forEach(el=>el.onclick=e=>{e.stopPropagation();const g=REAL.find(x=>x.id===el.dataset.rdeck);if(g){const m=topSwingMoment(g);openDeck(g,m&&m.id)}});
+  main.querySelectorAll("[data-room]").forEach(el=>el.onclick=()=>{UI.roomId=el.dataset.room;setView("room")});
+  main.querySelectorAll("[data-rshare]").forEach(el=>el.onclick=()=>{const g=REAL.find(x=>x.id===el.dataset.rshare);if(g){const m=topSwingMoment(g);openDeck(g,m&&m.id)}});
+  main.querySelectorAll("[data-rwhy]").forEach(el=>el.onclick=()=>{const g=REAL.find(x=>x.id===el.dataset.rwhy);if(!g)return;const m=topSwingMoment(g);openWhy({before:m.before,after:m.after,team:g.team,real:true,model:g.wpsrc==="model",sport:g.sport,src:g.source,est:g.wpsrc==="model"})});
 }
 /* games */
 function gamesList(){const g={};allMoments().forEach(m=>{const k=m.game.a+m.game.b+m.date;(g[k]||(g[k]={key:k,ms:[],m0:m})).ms.push(m)});return Object.values(g)}
@@ -1552,7 +1575,7 @@ function buildGames(){
    <div class="ghead">${LIVEDOT}<span>Live now</span><span class="note">${realLive.filter(g=>g.state==="in").length+(RP?1:0)} live${RP&&RP.auto?" (1 simulated)":""} · updated ${agoTxt(REAL_AT)}</span></div>
    <div class="list" id="realList">${liveListHTML()}</div>
    <div class="ghead"><span>Final</span><span class="note">Tap a game to swipe its flips</span></div>
-   <div class="list">${finals.map(loungeRow).join("")}</div>
+   <div class="list">${(()=>{const rf=finals.filter(g=>g.real),of=finals.filter(g=>!g.real);const lo=[...new Set(rf.map(g=>g.league))];rf.sort((a,b)=>lo.indexOf(a.league)-lo.indexOf(b.league));let prev=null;return rf.concat(of).map(g=>{let h="";const k=g.real?g.league:null;if(k&&k!==prev){h=`<div class="ghead sub2" style="margin:16px 0 2px">${esc(g.league)} · ${esc(String(g.date).toLowerCase())}</div>`}else if(!k&&prev){h=`<div class="ghead sub2" style="margin:16px 0 2px">Earlier</div>`}prev=k;return h+loungeRow(g)}).join("")})()}</div>
    ${older.length?`<div class="ghead"><span>Earlier this week</span></div><div class="list">${older.map(x=>{const m=x.m0;const top=x.ms.slice().sort((a,b)=>fanPct(b)-fanPct(a))[0];const sw=swing(top);return`<button class="mrow" data-deck="mg:${m.id}"><span class="mrsw ${sw<0?"dn":""}">${sw>=0?"+":"−"}${Math.abs(sw)}</span><span class="mrm"><span class="lg">${esc(m.league)} · ${esc(m.date)}</span><span class="sc">${tb(m.game.a,"sm")}<span class="scn">${m.game.as!==""?`${esc(m.game.as)} – ${esc(m.game.bs)}`:"vs"}</span>${tb(m.game.b,"sm")}</span><span class="pl">${esc(top.cat)} · ${esc(top.headline)}</span></span><span class="mrr"><b class="mrpct">${fanPct(top)}%</b><span class="st">agree</span></span></button>`}).join("")}</div>`:""}
   </div>`;
   const nr=$("#navbar .r");if(nr){const n=NS();nr.innerHTML=`<button class="gear glass" id="gear" aria-label="Notification settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>${n.freq==="off"?'<path d="M3 3l18 18"/>':""}</svg></button>`;$("#gear").onclick=openNotifSettings}
@@ -1711,17 +1734,28 @@ function checkLeaders(){S.flipLead=S.flipLead||{};REAL.forEach(g=>{const id=lead
 
 /* ===== design pass helpers ===== */
 const TEAMC={LAD:"#2E7BD6",ATL:"#CE1141",MIL:"#3A6FD8",SD:"#B88A4A",DEN:"#FB4F14",LAR:"#2D6BE0",CLE:"#FF3C00",PIT:"#FFB612",VT:"#B0335E",PITT:"#3B6FE0",NE:"#C60C30",BUF:"#2F6BE0",POR:"#E42518",NOR:"#BA0C2F",LVA:"#C8102E",IND:"#E03A3E",LAC:"#0080C6",NYY:"#3C5A99",TB:"#8FBCE6",CHW:"#C4CED4",SEA:"#3DA58A",TOR:"#1D6FD6",PHI:"#E81828",NYM:"#FF5910",CHC:"#3D6FD3",HOU:"#EB6E1F",DET:"#FA4616",BOS:"#BD3039",KC:"#5A8FD8",SF:"#FD5A1E"};
-function tc(ab){if(TEAMC[ab])return TEAMC[ab];let h=0;for(const ch of String(ab||""))h=(h*31+ch.charCodeAt(0))>>>0;return`hsl(${h%360} 45% 55%)`}
+function tc(ab){if(TEAMC[ab])return TEAMC[ab];{const g=(typeof REAL!=="undefined"?REAL:[]).find(x=>(x.a===ab&&x.ac)||(x.b===ab&&x.bc));if(g)return g.a===ab?g.ac:g.bc}let h=0;for(const ch of String(ab||""))h=(h*31+ch.charCodeAt(0))>>>0;return`hsl(${h%360} 45% 55%)`}
 
 const TEAMN={LAD:"Dodgers",ATL:"Braves",MIL:"Brewers",SD:"Padres",DEN:"Broncos",LAR:"Rams",CLE:"Browns",PIT:"Steelers",VT:"Virginia Tech",PITT:"Pitt",NE:"Patriots",BUF:"Bills",POR:"Portugal",NOR:"Norway",LVA:"Aces",IND:"Fever",LAC:"Chargers"};
-function tname(ab,full){return(full&&full!==ab?full:null)||TEAMN[ab]||ab}
+function tname(ab,full){if(full&&full!==ab)return full;if(TEAMN[ab])return TEAMN[ab];const g=(typeof REAL!=="undefined"?REAL:[]).find(x=>x.a===ab||x.b===ab);return g?(g.a===ab?g.an:g.bn):ab}
 function tink(c){const m=/^#([0-9a-f]{6})$/i.exec(c);if(!m)return"#fff";const n=parseInt(m[1],16),r=n>>16,g=n>>8&255,b=n&255;return(.299*r+.587*g+.114*b)>160?"#0a0a0a":"#fff"}
 function tb(ab,cls){const c=tc(ab);return`<span class="tbg ${cls||""}" style="--tc:${c};--tf:${tink(c)}">${esc(ab)}</span>`}
 function tbar(a,b){return`<span class="mrtc" style="--ta:${tc(a)};--tb:${tc(b)}" aria-hidden="true"></span>`}
 function tdot(ab){return`<i class="tdot" style="background:${tc(ab)}"></i>`}
 function poss(n){return/s$/.test(n)?n+"'":n+"'s"}
 /* Turn raw play-by-play into a headline. Falls back to the original text. */
-function hl(it){const t=it&&(it.t||it.headline);if(!t)return"";const s=t.replace(/\.$/,"").trim();let m;const sc=(s.match(/ scored/g)||[]).length;
+function fbHL(s){let m;const nm=x=>x.replace(/^[A-Z]{1,2}\.\s?/,"");
+  if(m=s.match(/^(\S+) pass complete .*?to (\S+?)(?: caught)? .*?for (\d+)(?: yards?)?.*TOUCHDOWN/i))return`${nm(m[1])} to ${nm(m[2])}, ${m[3]}-yd TD`;
+  if(m=s.match(/^(\S+) (?:rush|run|scramble)\w* .*?for (\d+) yards?.*TOUCHDOWN/i))return`${nm(m[1])} ${m[2]}-yd TD run`;
+  if(m=s.match(/^(\S+) pass (?:complete|incomplete)? ?.*?intercepted by (\S+)/i))return`${nm(m[2])} picks off ${nm(m[1])}`;
+  if(m=s.match(/^(\S+) field goal attempt from (\d+) yards? (?:is )?GOOD/i))return`${nm(m[1])} ${m[2]}-yd field goal`;
+  if(m=s.match(/^(\S+) field goal attempt from (\d+) yards? .*?(?:NO GOOD|MISSED|BLOCKED)/i))return`${nm(m[1])} ${/BLOCKED/i.test(s)?"has":"misses"} ${m[2]}-yd FG${/BLOCKED/i.test(s)?" blocked":""}`;
+  if(m=s.match(/^(\S+) pass complete .*?to (\S+?)(?: caught)? .*?for (\d+)(?: yards?)?/i))return`${nm(m[1])} to ${nm(m[2])} for ${m[3]}`;
+  if(m=s.match(/^(\S+) (?:rush|run)\w* .*?for (\d+) yards?/i))return`${nm(m[1])} runs for ${m[2]}`;
+  if(m=s.match(/^(\S+) sacked/i))return`${nm(m[1])} sacked`;
+  if((m=s.match(/^(.+?) Goal(?: \(\d+\))? ?([A-Za-z-]+(?: Shot)?)?/))&&/Goal/.test(s)&&!/scored/.test(s))return`${m[1]} scores${m[2]&&!/assist/i.test(m[2])?` (${m[2].toLowerCase()})`:""}`;
+  return null}
+function hl(it){const t=it&&(it.t||it.headline);if(!t)return"";const s=t.replace(/\.$/,"").trim();let m;{const f=fbHL(s);if(f)return f}const sc=(s.match(/ scored/g)||[]).length;
   if(m=s.match(/^(.+?) homered to [a-z ]+?(?: \((\d+) feet\))?(?:,|$)/)){const r=sc+1;return`${poss(m[1])} ${r>=4?"grand slam":r===1?"solo homer":r+"-run homer"}${m[2]?`\u00a0(${m[2]}\u00a0ft)`:""}`}
   if(m=s.match(/^(.+?) (singled|doubled|tripled) to ([a-z ]+?)(?:,|$)/)){const h={singled:"single",doubled:"double",tripled:"triple"}[m[2]];return sc?`${poss(m[1])} ${sc>1?sc+"-run":"RBI"} ${h}`:`${m[1]} ${m[2].replace(/d$/,"s")} to ${m[3]}`}
   if(m=s.match(/^(.+?) struck out (looking|swinging)/))return`${m[1]} strikes out ${m[2]}`;
@@ -1762,12 +1796,12 @@ function momentSVG(g,it,W,H){const P=g.path;const XM=g.state==="post"?1:Math.min
    <path d="${post}" fill="none" stroke="#f5c542" stroke-width="3.4" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`}}
 function mvList(g){return tpList(g).slice().sort((a,b)=>a.x-b.x).filter(x=>x.kind!=="post")}
 function missSlide(g,m){const pv=v=>m.team===g.team?v:100-v;const W=360,H=240,P=g.path,XM=g.state==="post"?1:Math.min(1,P[P.length-1][0]+.12),pd=6,X=t=>pd+t/XM*(W-2*pd),Y=v=>pd+(1-v/100)*(H-2*pd);
-  const L=a=>a.map(([t,v],j)=>(j?"L":"M")+X(t).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");const px=X(m.x),py=Y(pv(m.peak)),ey=Y(pv(m.endwp)),wi=m.whatif,wy=wi?Y(pv(wi.wp)):py;const gain=missGain(m);const bx=Math.min(px+90,W-8),c1=px+(bx-px)*.25,c2=px+(bx-px)*.35,c3=px+(bx-px)*.6;
+  const L=a=>a.map(([t,v],j)=>(j?"L":"M")+X(t).toFixed(1)+" "+Y(v).toFixed(1)).join(" ");const px=X(m.x),py=Y(m.peak_g??pv(m.peak)),ey=Y(m.peak_g??pv(m.endwp)),wi=m.whatif,wy=wi?Y(m.wi_g??pv(wi.wp)):py;const gain=missGain(m);const bx=Math.min(px+90,W-8),c1=px+(bx-px)*.25,c2=px+(bx-px)*.35,c3=px+(bx-px)*.6;
   return`<div class="mvhero"><span class="mvwhat">What could've been <em>est.</em></span><span class="r2big miss">${wi?`+${gain}`:missBig(m)}</span><span class="r2wp">${wi?`${esc(wi.desc)}: ${esc(m.team)} <b>${Math.round(m.peak)}%</b> → <b class="up">~${wi.wp}%</b> · actual <b>${Math.round(m.endwp)}%</b>`:`${esc(m.team)} peaked at <b>${Math.round(m.peak)}%</b> → ended the inning at <b>${Math.round(m.endwp)}%</b>`}</span></div>
    <div class="mvch"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%;display:block;overflow:visible"><line x1="0" x2="${W}" y1="${Y(50)}" y2="${Y(50)}" stroke="#222" stroke-dasharray="3 5" vector-effect="non-scaling-stroke"/><path d="${L(P)}" fill="none" stroke="#4a4a4a" stroke-width="1.6" vector-effect="non-scaling-stroke"/>
     ${wi?`<path d="M${px} ${py} C ${c1} ${py}, ${c2} ${wy}, ${c3} ${wy} L${bx} ${wy}" fill="none" stroke="#f5c542" stroke-width="2" stroke-dasharray="4 4" vector-effect="non-scaling-stroke" opacity=".9"/>`:""}
     <line x1="${px}" x2="${px}" y1="${py}" y2="${ey}" stroke="#8a8a8a" stroke-width="1.2" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/></svg>
-    ${wi?`<div class="mvring" style="left:${bx/W*100}%;top:${wy/H*100}%"></div><div class="mvwlab" style="left:${bx/W*100}%;top:${wy/H*100}%;${wy<ey?"transform:translate(-100%,-170%)":"transform:translate(-100%,80%)"}">~${wi.wp}% ${esc(m.team)} if one hit</div>`:""}
+    ${wi?`<div class="mvring" style="left:${bx/W*100}%;top:${wy/H*100}%"></div><div class="mvwlab" style="left:${bx/W*100}%;top:${wy/H*100}%;${wy<ey?"transform:translate(-100%,-170%)":"transform:translate(-100%,80%)"}">~${wi.wp}% ${esc(m.team)} ${g.kind==="bb"?"if one hit":"if it goes in"}</div>`:""}
     <div class="mvdot grey" style="left:${px/W*100}%;top:${ey/H*100}%"></div>
     <div class="r2ann mvann" style="left:${px/W*100}%;top:${(wy<ey?ey+26:ey-30)/H*100}%"><span class="r2ac">${esc(m.clock)} · STRANDED</span><span class="r2av">${esc(m.state)}</span></div></div>
    <div class="mvbody"><div class="r2meta"><span class="r2cat">The flip that wasn't</span></div><h2 class="r2hl">${esc(m.t)}</h2><p class="r2line">${esc(m.ctx)}. Ended on: ${esc(m.end)}</p>
@@ -1833,7 +1867,7 @@ function firstVote(){const m=mById("m_vt_fg")||feedOrder()[0];if(!m){S.onboarded
 function brewing(g){if(g.state!=="in"||!g.path||g.path.length<3)return false;const x=g.path[g.path.length-1][0],v=g.path[g.path.length-1][1];const P=g.path,pv=P[Math.max(0,P.length-4)][1],toward=v>=50?pv-v:v-pv;return(x>=.55&&Math.abs(v-50)<=20)||(x>=.85&&Math.abs(v-50)<=35)||(x>=.8&&toward>=8)}
 /* spoiler-free replay of a finished real game, so the live experience can be shown any time */
 let RP=null,RPT=null;
-function rpClock(g,x){if(g.kind==="bb"){const k=Math.min(17,Math.floor(x*18));return`${k%2?"Bot":"Top"} ${Math.floor(k/2)+1}`}const q=Math.min(4,Math.floor(x*4)+1);return`Q${q}`}
+function rpClock(g,x){if(g.kind==="soc")return Math.round(x*95)+"'";if(g.kind==="bb"){const k=Math.min(17,Math.floor(x*18));return`${k%2?"Bot":"Top"} ${Math.floor(k/2)+1}`}const q=Math.min(4,Math.floor(x*4)+1);return`Q${q}`}
 function rpScore(g,t){let a=0,b=0;for(const q of(g.log||[])){if(q.x>t)continue;const r=(String(q.txt).match(/ scored/g)||[]).length+(/homered/.test(q.txt)?1:0);if(!r)continue;if(/^Top/.test(q.c))a+=r;else b+=r}return[a,b]}
 function rpSnap(){const g=RP.g,t=RP.t;const sc=RP.auto?rpScore(g,t):["",""];return{...g,id:g.id+"_rp",replay:true,sim:!!RP.auto,src:g,state:"in",as:sc[0],bs:sc[1],clock:rpClock(g,t),path:g.path.filter(q=>q[0]<=t),moments:g.moments.filter(m=>m.x<=t),missed:[],log:(g.log||[]).filter(q=>q.x<=t)}}
 function startReplay(id,opt){opt=opt||{};const g=REAL.find(x=>x.id===id&&x.state==="post");if(!g)return;clearInterval(RPT);RP={g,t:opt.t0||.02,seen:new Set(),brew:false,auto:!!opt.auto};
@@ -1862,8 +1896,8 @@ function openWhy(o){const sw=o.after-o.before,lo=Math.min(o.before,o.after),hi=M
   modal(`<div class="sheet"><div class="grab"></div><div class="sheethead"><h2>How we know</h2><button class="x" data-close aria-label="Close">✕</button></div><div class="hwk">
    <div style="display:flex;align-items:baseline;gap:10px"><span class="r2big ${sw<0?"dn":""}" style="font-size:52px">${sgn(sw)}</span><span class="note">${o.est?"Estimated ":""}change in ${esc(o.team)}'s win chance from this one play</span></div>
    <div class="hwkbar"><span>${o.before}%</span><span class="tr"><i style="left:${lo}%;width:${hi-lo}%;background:${sw<0?"#ff5b4f":"#f5c542"}"></i><i style="left:${o.before}%;width:2px;background:#fff"></i></span><span>${o.after}%</span></div>
-   <dl><dt>Data</dt><dd>${o.real?"ESPN's live win-probability model, updated after every play.":"No live feed for this game. The line is illustrative, built around the before and after numbers from reporting."}</dd>
-   ${o.real?`<dt>Play data</dt><dd>MLB Stats API for hit distance, exit velocity and pitch location (near-homers, missed calls).</dd>`:""}
+   <dl><dt>Data</dt><dd>${o.model?(o.sport==="Hockey"?"Flip's hockey model, built on the real goals. Each team's scoring rate comes from pre-game odds, then adjusts for time left and the score; ties split by overtime odds. ESPN doesn't publish win probability for hockey.":"Flip's soccer model, built on the real match events. Each team's scoring rate comes from pre-match odds, then adjusts for time left, the score and red cards. ESPN doesn't publish win probability for soccer."):o.real?"ESPN's live win-probability model, updated after every play.":"No live feed for this game. The line is illustrative, built around the before and after numbers from reporting."}</dd>
+   ${o.real&&!o.model?`<dt>Play data</dt><dd>MLB Stats API for hit distance, exit velocity and pitch location (near-homers, missed calls).</dd>`:""}
    <dt>Swing</dt><dd>Points of win chance the play moved: ${o.before}% → ${o.after}% is ${sgn(sw)}.</dd>
    <dt>The flip</dt><dd>The single play with the biggest swing in the game.</dd>
    <dt>% agree</dt><dd>Fans voting yes on "Did this flip the game?"</dd>
@@ -1973,7 +2007,7 @@ function openDeck(g,startId){const l=mvList(g);if(!l.length){toast("No flips yet
   $("#mview").addEventListener("submit",e=>{const f=e.target.closest("[data-tkform]");if(!f)return;e.preventDefault();const it=l.find(x=>x.id===f.dataset.tkform);addTake(g,it,f.querySelector("input").value);f.closest(".tk").outerHTML=takesHTML(g,it)});
   $("#mview").onclick=e=>{const go=e.target.closest("[data-mvgo]");if(go){const k=Math.max(0,Math.min(l.length-1,cur+(+go.dataset.mvgo)));deck.scrollTo({left:k*w(),behavior:"smooth"});return}
     const vo=e.target.closest("[data-mvvote]");if(vo){const it=l.find(x=>x.id===vo.dataset.id);castVote(g,it,vo.dataset.mvvote==="x"?null:vo.dataset.mvvote);const sl=deck.querySelector(`[data-sid="${CSS.escape(it.id)}"]`);sl.innerHTML=mvSlide(g,it);return}
-    const why=e.target.closest("[data-why]");if(why){const it=l.find(x=>x.id===why.dataset.why);openWhy({before:it.before,after:it.after,team:g.team,real:REAL.some(x=>x.id===g.id||x.id+"_rp"===g.id),src:g.source,est:false});return}
+    const why=e.target.closest("[data-why]");if(why){const it=l.find(x=>x.id===why.dataset.why);openWhy({before:it.before,after:it.after,team:g.team,real:REAL.some(x=>x.id===g.id||x.id+"_rp"===g.id),model:g.wpsrc==="model",sport:g.sport,src:g.source,est:g.wpsrc==="model"});return}
     const lk=e.target.closest("[data-tklike]");if(lk){const it=l.find(x=>x.id===lk.dataset.id);likeTake(g,it,lk.dataset.tklike);const sl=deck.querySelector(`[data-sid="${CSS.escape(it.id)}"]`);sl.querySelector(".tk").outerHTML=takesHTML(g,it);return}
     const pk=e.target.closest("[data-mvpick]");if(pk){closeModal();UI.finalId=g.id;setView("final");return}
     const sw=e.target.closest("[data-mvswing]");if(sw){const it=l.find(x=>x.id===sw.dataset.mvswing);toggleSwing(g,it);const sl=deck.querySelector(`[data-sid="${CSS.escape(it.id)}"]`);sl.innerHTML=mvSlide(g,it);sl.querySelector("[data-mvswing]").classList.add("swpop");return}
@@ -1992,12 +2026,12 @@ function drawRealShare(g,it,cb){const W=1080,H=1350,cv=document.createElement("c
   x.setLineDash([6,10]);x.strokeStyle="#262626";x.lineWidth=2;x.beginPath();x.moveTo(cx,Y(50));x.lineTo(cx+cw,Y(50));x.stroke();x.setLineDash([]);
   x.beginPath();P.slice(0,k).forEach(([t,v],j)=>j?x.lineTo(X(t),Y(v)):x.moveTo(X(t),Y(v)));x.strokeStyle="#4a4a4a";x.lineWidth=4;x.lineJoin="round";x.stroke();
   x.save();x.shadowColor="rgba(245,197,66,.8)";x.shadowBlur=18;x.beginPath();P.slice(k-1).forEach(([t,v],j)=>j?x.lineTo(X(t),Y(v)):x.moveTo(X(t),Y(v)));x.strokeStyle="#f5c542";x.lineWidth=7;x.stroke();x.restore();
-  if(MISS){const pv=v=>it.team===g.team?v:100-v,mx=X(it.x),py=Y(pv(it.before)),ey=Y(pv(it.after));x.setLineDash([4,6]);x.strokeStyle="#8a8a8a";x.lineWidth=2;x.beginPath();x.moveTo(mx,py);x.lineTo(mx,ey);x.stroke();if(it.whatif){const wy=Y(pv(it.whatif.wp)),wx=Math.min(cx+cw-20,mx+260);x.setLineDash([12,10]);x.strokeStyle="#f5c542";x.lineWidth=5;x.beginPath();x.moveTo(mx,py);x.bezierCurveTo(mx+50,py,mx+40,wy,mx+110,wy);x.lineTo(wx,wy);x.stroke();x.setLineDash([]);x.lineWidth=4;x.beginPath();x.arc(wx,wy,16,0,7);x.stroke();x.fillStyle="#f5c542";x.font='600 28px "Geist Mono", monospace';x.textAlign="right";x.fillText(`~${it.whatif.wp}% if one hit`,wx-26,wy-24);x.textAlign="left"}x.setLineDash([]);x.fillStyle="#8a8a8a";x.beginPath();x.arc(mx,ey,10,0,7);x.fill()}else{x.fillStyle="#f5c542";x.beginPath();x.arc(X(P[k-1][0]),Y(P[k-1][1]),11,0,7);x.fill();}
+  if(MISS){const pv=v=>it.team===g.team?v:100-v,mx=X(it.x),py=Y(it.peak_g??pv(it.before)),ey=Y(it.peak_g??pv(it.after));x.setLineDash([4,6]);x.strokeStyle="#8a8a8a";x.lineWidth=2;x.beginPath();x.moveTo(mx,py);x.lineTo(mx,ey);x.stroke();if(it.whatif){const wy=Y(it.wi_g??pv(it.whatif.wp)),wx=Math.min(cx+cw-20,mx+260);x.setLineDash([12,10]);x.strokeStyle="#f5c542";x.lineWidth=5;x.beginPath();x.moveTo(mx,py);x.bezierCurveTo(mx+50,py,mx+40,wy,mx+110,wy);x.lineTo(wx,wy);x.stroke();x.setLineDash([]);x.lineWidth=4;x.beginPath();x.arc(wx,wy,16,0,7);x.stroke();x.fillStyle="#f5c542";x.font='600 28px "Geist Mono", monospace';x.textAlign="right";x.fillText(`${it.team} ~${it.whatif.wp}% ${g.kind==="bb"?"if one hit":"if it goes in"}`,wx-26,wy-24);x.textAlign="left"}x.setLineDash([]);x.fillStyle="#8a8a8a";x.beginPath();x.arc(mx,ey,10,0,7);x.fill()}else{x.fillStyle="#f5c542";x.beginPath();x.arc(X(P[k-1][0]),Y(P[k-1][1]),11,0,7);x.fill();}
   x.fillStyle="#bdbdbd";x.font='600 28px "Geist Mono", monospace';x.fillText(`${it.clock.toUpperCase()} · ${(it.cat||"PLAY").toUpperCase()}`,72,960);
   x.fillStyle="#fff";x.font='700 58px "Bricolage Grotesque", sans-serif';let y=1040,line="";for(const wd of hl(it).split(" ")){const t=line?line+" "+wd:wd;if(x.measureText(t).width>W-144){x.fillText(line,72,y);y+=68;line=wd}else line=t}x.fillText(line,72,y);
   if(it.ctx){x.fillStyle="#9a9a9a";x.font='500 30px "Geist Mono", monospace';x.fillText(it.ctx,72,y+60)}
   x.fillStyle=tc(g.a);x.fillRect(0,0,W/2,10);x.fillStyle=tc(g.b);x.fillRect(W/2,0,W/2,10);
-  x.fillStyle="#8a8a8a";x.font='500 28px "Geist Mono", monospace';x.fillText("@flippdodds",72,H-70);x.textAlign="right";x.fillText(MISS?`${it.left} left on base`:`${crowdPct(g,it)}% of fans agree`,W-72,H-70);cb(cv)}
+  x.fillStyle="#8a8a8a";x.font='500 28px "Geist Mono", monospace';x.fillText("@flippdodds",72,H-70);x.textAlign="right";x.fillText(MISS?(it.left!=null?`${it.left} left on base`:"What could have been"):(it.id===leaderOf(g)?"Biggest swing of the game":"Win chance swing"),W-72,H-70);cb(cv)}
 function storyOf(card,g,it){const W=1080,H=1920,cv=document.createElement("canvas");cv.width=W;cv.height=H;const x=cv.getContext("2d");x.fillStyle="#050505";x.fillRect(0,0,W,H);
   const bg=x.createRadialGradient(W/2,H*.45,10,W/2,H*.45,1000);bg.addColorStop(0,"rgba(245,197,66,.10)");bg.addColorStop(1,"rgba(245,197,66,0)");x.fillStyle=bg;x.fillRect(0,0,W,H);
   x.fillStyle="#fff";x.textAlign="center";x.font='800 76px "Bricolage Grotesque", sans-serif';x.fillText("Did this flip the game?",W/2,230);
@@ -2005,7 +2039,7 @@ function storyOf(card,g,it){const W=1080,H=1920,cv=document.createElement("canva
   x.fillStyle="#9a9a9a";x.font='500 34px "Geist Mono", monospace';x.fillText("Small moments. Big swings.",W/2,1790);x.textAlign="left";return cv}
 function openRealShare(g,it){let FMT="post";
   modal(`<div class="sheet"><div class="grab"></div><div class="sheethead"><h2>Share this flip</h2><button class="x" data-close aria-label="Close">✕</button></div><div class="shfmt" id="shFmt"><button data-f="post" aria-pressed="true">Post 4:5</button><button data-f="story" aria-pressed="false">Story 9:16</button></div><div id="shWrap" class="flexwrap"><div class="note" style="padding:40px;text-align:center">Rendering card…</div></div>
-  <div class="two" style="margin-top:12px"><button class="btn go" id="shShare">Share card</button><button class="btn ghost" id="shSave">Save image</button></div><p class="note" style="text-align:center;margin:10px 0 0">${REAL.some(x=>x.id===g.id)?"Real ESPN win-chance line.":"Illustrative line built around the moment."} If saving doesn't work, screenshot it.</p></div>`);
+  <div class="two" style="margin-top:12px"><button class="btn go" id="shShare">Share card</button><button class="btn ghost" id="shSave">Save image</button></div><p class="note" style="text-align:center;margin:10px 0 0">${g.wpsrc==="model"?"Win chance from Flip's model, built on real match events.":REAL.some(x=>x.id===g.id)?"Real ESPN win-chance line.":"Illustrative line built around the moment."} If saving doesn't work, screenshot it.</p></div>`);
   const render=()=>drawRealShare(g,it,card=>{const cv=FMT==="story"?storyOf(card,g,it):card;const url=cv.toDataURL("image/png");$("#shWrap").innerHTML=`<img alt="Share card" src="${url}">`;const name=`flip-${g.a}-${g.b}-${it.clock.replace(/\W+/g,"")}.png`;
     $("#shSave").onclick=async()=>{if(window.claude&&window.claude.use){const dl=await window.claude.use("downloads").catch(()=>null);if(dl){try{await dl.save({filename:name,data:await (await fetch(url)).blob()});toast("Saved","Card saved. Post it.")}catch(e){if(e&&e.code!=="declined")toast("Save unavailable","Take a screenshot instead.","warn")}return}}
       const a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()};
@@ -2124,7 +2158,7 @@ function openAddMoment(g){const cats=["Missed call","Flag","Replay","Argument","
   $("#fGo").onclick=()=>{const note=$("#fNote").value.trim();if(note.length<4){$("#fNote").focus();return}const id="p"+Date.now().toString(36);const im=dcImpact(g,st.play,st.cat,st.R,st.pen);closeModal();
     MYFLAGS=MYFLAGS.concat([{kind:"post",id,g:g.id,m:st.play.id,x:st.play.x,clock:st.play.c,cat:st.cat,note,imp:im,at:new Date().toISOString()}]);UI.rtab="fans";UI.open=id;toast("Deep cut added",im&&(im.type==="call"||im.n)?`${im.hid>=0?"+":"−"}${Math.abs(im.hid)} pt ${im.type==="call"?"hidden swing":"swing after"} for ${esc(im.R)}.`:"Its impact fills in over the next few plays.");saveMine()}}
 
-function realFinal(g){return{id:g.id,real:true,sport:g.sport,league:g.league,date:"Tonight",a:g.a,as:g.as,b:g.b,bs:g.bs,res:`${g.as>g.bs?g.an:g.bn} win ${Math.max(g.as,g.bs)}–${Math.min(g.as,g.bs)}`,team:g.team,pal:"gold",ticks:g.ticks,rawPath:g.path,source:g.source,
+function realFinal(g){return{id:g.id,real:true,sport:g.sport,league:g.league,date:g.date||(g.sport==="Soccer"?"Today":"Tonight"),a:g.a,as:g.as,b:g.b,bs:g.bs,res:g.as===g.bs?`Draw ${g.as}–${g.bs}`:`${g.as>g.bs?g.an:g.bn} win ${Math.max(g.as,g.bs)}–${Math.min(g.as,g.bs)}`,team:g.team,pal:"gold",ticks:g.ticks,rawPath:g.path,source:g.source,
   cands:g.moments.slice().sort((a,b)=>Math.abs(b.after-b.before)+(b.cat==="Big play"?0:8)-Math.abs(a.after-a.before)-(a.cat==="Big play"?0:8)).slice(0,5).sort((a,b)=>a.x-b.x).map(m=>({...m,votes:swingsOn(g.id,m.id)}))}}
 function checkTrending(){S.nudged=S.nudged||{};const now=Date.now();
   const perMin=(g,mid,kinds)=>allItems().filter(f=>kinds.includes(f.kind||"swing")&&f.g===g.id&&f.m===mid&&now-Date.parse(f.at||0)<60000).length;
@@ -2134,10 +2168,13 @@ function checkTrending(){S.nudged=S.nudged||{};const now=Date.now();
         onYes:()=>setBack(g,p,"real"),onNo:()=>setBack(g,p,"nah"),onOpen:()=>{UI.realId=g.id;UI.rtab="fans";UI.open=p.id;setView("real")}})){S.nudged[p.id]=1;save()}return}
     for(const it of ms.concat(plays)){if(S.nudged[it.id]||mySwing(g.id,it.id))continue;const recent=allItems().filter(f=>isSwing(f)&&f.g===g.id&&f.m===it.id&&now-Date.parse(f.at||0)<600000).length;if(recent<3)continue;
       if(nudge({gid:g.id,deep:false,cat:it.cat&&it.cat!=="Play"?it.cat:"Swing",game:`${g.a}–${g.b}`,clock:it.clock,title:it.t,stat:()=>({n:swingsOn(g.id,it.id),perMin:perMin(g,it.id,["swing"]),split:null}),yes:"Swung it",no:"Nah",onYes:()=>toggleSwing(g,it),onNo:()=>{},onOpen:()=>{UI.realId=g.id;UI.rtab="tp";UI.open=it.id;setView("real")}})){S.nudged[it.id]=1;save()}return}}}
-async function initRealData(){try{S.realFlags=S.realFlags||[];MYFLAGS=S.realFlags;
+let FEEDT=null;function applyFeed(d){if(!d||!Array.isArray(d.games)||!d.games.length)return false;if(d.updatedAt&&REAL_AT&&Date.parse(d.updatedAt)<=Date.parse(REAL_AT))return false;{const ids=new Set(d.games.map(g=>g.id));REAL=d.games.concat((LIVE_SNAPSHOT.games||[]).filter(g=>g.sport==="Baseball"&&!ids.has(g.id)))}REAL_AT=d.updatedAt;try{checkLeaders()}catch(e){}rePaintReal();if(UI.view==="feed"&&scroller.scrollTop<40)try{buildFeed()}catch(e){}return true}
+async function pollFeed(){try{const r=await fetch("./feed.json?t="+Date.now(),{cache:"no-store"});if(!r.ok)return;applyFeed(await r.json())}catch(e){}}
+function startFeedPoll(){if(window.claude&&window.claude.use)return;if(!/^https?:/.test(location.protocol))return;pollFeed();clearInterval(FEEDT);FEEDT=setInterval(()=>{if(!document.hidden)pollFeed()},120000);document.addEventListener("visibilitychange",()=>{if(!document.hidden)pollFeed()})}
+async function initRealData(){startFeedPoll();try{S.realFlags=S.realFlags||[];MYFLAGS=S.realFlags;
   if(!(window.claude&&window.claude.use))return;const db=await window.claude.use("db");if(!db)return;DB=db;
   const user=await window.claude.use("user").catch(()=>null);UID=user?await user.id().catch(()=>null):null;
-  db.doc("live/feed").onSnapshot(s=>{if(!s.exists)return;const d=s.data();if(!d||!Array.isArray(d.games))return;if(d.updatedAt&&REAL_AT&&Date.parse(d.updatedAt)<Date.parse(REAL_AT))return;REAL=d.games;REAL_AT=d.updatedAt;checkLeaders();rePaintReal()},()=>{});
+  db.doc("live/feed").onSnapshot(s=>{if(!s.exists)return;applyFeed(s.data())},()=>{});
   db.collection("flags").onSnapshot(q=>{FLAGS=q.docs.flatMap(d=>{const it=(d.data()||{}).items;return Array.isArray(it)?it.map(f=>({...f,_o:d.id})):[]});setTimeout(checkTrending,50);
     if(UID){const mine=q.docs.find(d=>d.id===UID);if(mine&&Array.isArray((mine.data()||{}).items))MYFLAGS=mine.data().items.slice()}rePaintReal()},()=>{});
  }catch(e){}}
@@ -2221,7 +2258,7 @@ $("#launchBtn").onclick=openSubmit;
 window.addEventListener("resize",()=>{scaleDevice();if(UI.view==="game")buildGame();if(UI.view==="final")drawFinal(curFinal());if(UI.view==="live")paintLive();if(UI.view==="real")drawReal(curReal())});
 async function boot(){scaleDevice();try{await Promise.race([document.fonts.load('800 80px "Bricolage Grotesque"'),new Promise(r=>setTimeout(r,1500))])}catch(e){}
   load();S.picks=S.picks||{};startLive();initRealData();setView("feed");if(!S.onboarded)setTimeout(firstVote,300);
-  setTimeout(()=>{if(!RP&&!REAL.some(g=>g.state==="in")){const d=REAL.find(g=>g.state==="post");if(d)startReplay(d.id,{auto:true,t0:.3})}updateLivePill()},600)}
+  setTimeout(()=>{if(!RP&&!REAL.some(g=>g.state==="in")){const d=REAL.find(g=>g.state==="post"&&g.kind==="bb")||REAL.find(g=>g.state==="post");if(d)startReplay(d.id,{auto:true,t0:.3})}updateLivePill()},600)}
 boot();
 
 })();
