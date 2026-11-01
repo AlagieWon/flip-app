@@ -104,8 +104,10 @@ def build(ev, lg):
     path = []; moments = []; log = []; chances = []
     last_e = -1
     def side_of(txt):
-        if f'({hn})' in txt or txt.startswith(hn) or f'Goal! {hn}' in txt: return 'home'
-        if f'({an_})' in txt: return 'away'
+        ih, ia = txt.find(f'({hn})'), txt.find(f'({an_})')
+        if ih >= 0 and (ia < 0 or ih < ia): return 'home'
+        if ia >= 0: return 'away'
+        if txt.startswith(hn) or f'Goal! {hn}' in txt: return 'home'
         return None
     for idx, c in enumerate(com):
         txt = c.get('text', ''); disp = c['time']['displayValue']; e = elapsed(disp, txt); x = round(min(1, e / TOT), 4)
