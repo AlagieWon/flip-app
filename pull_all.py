@@ -62,7 +62,22 @@ def pre_game(ev, sport_label, league, kind, url):
     comp = ev['competitions'][0]
     H = [c for c in comp['competitors'] if c['homeAway'] == 'home'][0]; A = [c for c in comp['competitors'] if c['homeAway'] == 'away'][0]
     g = base(ev, sport_label, league, kind, H, A, H['team']['abbreviation'], [], [], [], {'name': 'ESPN', 'url': url}, [], 'espn' if kind != 'hk' else 'model')
-    g['as'] = g['bs'] = ''; g['clock'] = ev['status']['type'].get('shortDetail', ''); return g
+    g['as'] = g['bs'] = ''; g['clock'] = ev['status']['type'].get('shortDetail', '')
+    g['pre_wp'] = pre_odds(comp, H, A); return g
+def pre_odds(comp, H, A):
+    # de-vigged pre-game win chance from the posted moneyline (home/away[/draw])
+    try:
+        ml = ((comp.get('odds') or [{}])[0].get('moneyline') or {})
+        def p(side):
+            o = ((ml.get(side) or {}).get('close') or (ml.get(side) or {}).get('open') or {}).get('odds')
+            if o in (None, '', 'OFF'): return None
+            o = float(str(o).replace('EVEN', '100')); return 100 / (o + 100) if o > 0 else -o / (-o + 100)
+        ph, pa, pd = p('home'), p('away'), p('draw')
+        if ph is None or pa is None: return None
+        t = ph + pa + (pd or 0); ph, pa = ph / t, pa / t
+        fav = 'home' if ph >= pa else 'away'
+        return {'team': (H if fav == 'home' else A)['team']['abbreviation'], 'p': round(100 * max(ph, pa)), 'draw': round(100 * pd / t) if pd else None}
+    except Exception: return None
 
 def tidy(t):
     t = re.sub(r'^\(\s*\d+:\d+\s*\)\s*', '', t)
