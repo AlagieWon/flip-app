@@ -1310,7 +1310,7 @@ function realReel({g,m}){const sw=m.after-m.before,live=g.state==="in",has=g.as!
     <div class="r2bg" data-rdeck="${g.id}" role="button" aria-label="Open every flip in this game">${sigSVG(g.path,{W:340,H:190,pad:6,sw:1.6,live})}<span class="r2tap">Tap for every flip</span></div>
     <div class="r2body">
       <div class="r2meta"><span class="rrtag ${live?"live":""}">${live?LIVEDOT+"LIVE":"REAL"}</span><span class="r2cat">${esc(m.cat||"Big play")} · ${esc(m.clock)}</span></div>
-      <h2 class="r2hl">${esc((hl({t:String(m.d||m.t).replace(/\s+/g," ")})||m.t).replace(/\s+/g," "))}</h2>
+      <h2 class="r2hl">${esc((hl({t:String((g.kind==="fb"?m.d:m.t)||m.t).replace(/\s+/g," ")})||m.t).replace(/\s+/g," "))}</h2>
       <div class="r2src"><span>Source</span><a href="${esc(g.source.url)}" target="_blank" rel="noopener noreferrer">${esc(g.wpsrc==="model"?"Flip model · ESPN events":g.source.name)} ↗</a></div>
       <div class="rracts"><button class="btn wht sm" data-rdeck="${g.id}">Swipe the flips</button>${live?`<button class="btn ghost sm" data-room="${g.id}">Join the room</button>`:`<button class="btn ghost sm" data-rshare="${g.id}">Share card</button>`}</div>
     </div></section>`}
