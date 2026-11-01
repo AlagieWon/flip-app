@@ -156,9 +156,18 @@ def build(ev, lg):
                                 'whatif': {'wp': round(wi), 'desc': 'If it goes in', 'est': True}, 'peak_g': round(cur_g, 1), 'wi_g': round(wi_g, 1), 'score': (wi - cur) * q, 'gain': round(wi - cur)})
         cl = 'Goal' if cat in ('Goal', 'Penalty', 'Own goal') else (cat or ('Chance' if low.startswith('attempt') else 'Play'))
         log.append({'id': f"l{ev['id']}_{idx}", 'x': x, 'c': disp, 'txt': txt, 'cat': cl, 'sw': round(after - before)})
-    while last_e < TOT:
-        last_e += 1; path.append([round(min(1, last_e / TOT), 4), round(wp(min(last_e, TOT), gh, ga, rh, ra), 1)])
-    path[-1][1] = 100.0 if (gh > ga) == (T == 'home') and gh != ga else (0.0 if gh != ga else path[-1][1])
+    live = ev['status']['type']['state'] == 'in'
+    if live:
+        sclock = ev['status'].get('displayClock') or ''
+        now_e = elapsed(sclock, 'Second Half' if (ev['status'].get('period') or 1) >= 2 else '') if minute(sclock) else (45 + add1 if 'HT' in (ev['status']['type'].get('shortDetail') or '') else last_e)
+        now_e = max(now_e, last_e)
+        while last_e < min(now_e, TOT):
+            last_e += 1; path.append([round(min(1, last_e / TOT), 4), round(wp(last_e, gh, ga, rh, ra), 1)])
+    else:
+        while last_e < TOT:
+            last_e += 1; path.append([round(min(1, last_e / TOT), 4), round(wp(min(last_e, TOT), gh, ga, rh, ra), 1)])
+        path[-1][1] = 100.0 if (gh > ga) == (T == 'home') and gh != ga else (0.0 if gh != ga else path[-1][1])
+    if not path: path = [[0, round(wp(0, 0, 0, 0, 0), 1)]]
     for m in moments: m['ctx'] = None
     moments = [m for m in moments if abs(m['after'] - m['before']) >= 5]
     chances.sort(key=lambda c: -c['score'])
@@ -171,16 +180,29 @@ def build(ev, lg):
     ht = round((45 + add1) / TOT, 3)
     ac, bc = lighten(A['team'].get('color', '')), lighten(H['team'].get('color', ''))
     return {'id': f"soc_{ev['id']}", 'sport': 'Soccer', 'league': LNAME.get(lg, lg), 'a': A['team']['abbreviation'], 'an': A['team']['shortDisplayName'],
-            'b': H['team']['abbreviation'], 'bn': H['team']['shortDisplayName'], 'as': as_, 'bs': hs, 'state': 'post', 'clock': 'FT', 'team': team,
+            'b': H['team']['abbreviation'], 'bn': H['team']['shortDisplayName'], 'as': as_, 'bs': hs, 'state': 'in' if live else 'post', 'clock': (ev['status']['type'].get('shortDetail') or ev['status'].get('displayClock') or '') if live else 'FT', 'team': team, 'start': ev.get('date'),
             'kind': 'soc', 'wpsrc': 'model', 'ac': ac, 'bc': bc, 'ticks': [[0, 'KO'], [ht, 'HT'], [1, 'FT']], 'path': path, 'moments': moments,
             'missed': missed, 'log': log[::-1][:400], 'prior': [round(lh, 2), round(la, 2)],
             'source': {'name': 'ESPN match events · Flip model', 'url': f"https://www.espn.com/soccer/match/_/gameId/{ev['id']}"}}
+
+def pre_game(ev, lg):
+    comp = ev['competitions'][0]
+    H = [c for c in comp['competitors'] if c['homeAway'] == 'home'][0]; A = [c for c in comp['competitors'] if c['homeAway'] == 'away'][0]
+    return {'id': f"soc_{ev['id']}", 'sport': 'Soccer', 'league': LNAME.get(lg, lg), 'a': A['team']['abbreviation'], 'an': A['team'].get('shortDisplayName') or A['team']['abbreviation'],
+            'b': H['team']['abbreviation'], 'bn': H['team'].get('shortDisplayName') or H['team']['abbreviation'], 'as': '', 'bs': '', 'state': 'pre',
+            'clock': ev['status']['type'].get('shortDetail', ''), 'start': ev.get('date'), 'team': H['team']['abbreviation'], 'kind': 'soc', 'wpsrc': 'model',
+            'ac': lighten(A['team'].get('color', '')), 'bc': lighten(H['team'].get('color', '')), 'ticks': [[0, 'KO'], [.5, 'HT'], [1, 'FT']], 'path': [], 'moments': [], 'missed': [], 'log': [],
+            'source': {'name': 'ESPN', 'url': f"https://www.espn.com/soccer/match/_/gameId/{ev['id']}"}}
 
 games = []
 for lg in LEAGUES:
     sb = get(f"https://site.api.espn.com/apis/site/v2/sports/soccer/{lg}/scoreboard?dates={DATE}", f"sb_{lg}_{DATE}.json")
     for ev in sb.get('events', []):
-        if ev['status']['type']['state'] != 'post': continue
+        st = ev['status']['type']['state']
+        if st == 'pre':
+            try: games.append(pre_game(ev, lg))
+            except Exception as e: print('skip pre', lg, ev['id'], e)
+            continue
         try: games.append(build(ev, lg))
         except Exception as e: print('skip', lg, ev['id'], e)
 json.dump(games, open(OUT, 'w'))
