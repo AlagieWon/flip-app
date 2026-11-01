@@ -900,6 +900,7 @@ body.bleed .reel.r2 .r2hero{top:calc(env(safe-area-inset-top,0px) + 136px)}
 .rrtag.live{color:#fff;border-color:#5a1d1a;background:rgba(255,91,79,.12)}
 .rracts{display:flex;gap:8px;margin-top:14px}.rracts .btn{flex:1}
 .btn.wht{background:#f2f2f2;color:#0a0a0a}
+.rmpick:empty{display:none}
 .r2tap{position:absolute;right:18px;bottom:-4px;font-size:11px;color:#8a8a8a;pointer-events:none}
 
 /* ===== first vote ===== */
@@ -1558,8 +1559,8 @@ function loungeLiveCard(g){const pre=g.state==="pre";const m=topSwingMoment(g);c
    <span class="m2top"><span class="m2st">${pre?`<span class="m2pre">${esc(clk)}</span>`:`<i class="m2dot"></i>${esc(clk)}`}</span>${bw?`<span class="brewtag"><i></i>Flip brewing</span>`:""}${g.replay?`<span class="rptag">${g.sim?"SIMULATED":"REPLAY"}</span>`:""}<span class="m2lg">${esc(g.league.replace(/^.*?· /,""))}</span></span>
    <span class="m2sc"><span class="m2t ${lead===1?"dim":""}">${tb(g.a)}<span class="num">${g.as}</span></span>${g.replay&&!g.sim?`<span class="m2pre" style="font-size:11px;align-self:center">score hidden</span>`:""}<span class="m2t ${lead===0?"dim":""}">${tb(g.b)}<span class="num">${g.bs}</span></span>
     ${pre?"":`<span class="m2wp"><span class="num">${wp}%</span><span>${esc(g.team)} win</span></span>`}</span>
-   <span class="m2ch">${sigSVG(P,{W:340,H:84,pad:4,live:!pre,sw:1.4,r:3,glow:2.5,empty:pre?" ":undefined})}</span>
-   ${g.state==="in"?`<span class="m2chips"><span>Chat · ${kfmt(roomViewers(g))}</span><span>Guess the next play</span></span>`:""}
+   ${pre?"":`<span class="m2ch">${sigSVG(P,{W:340,H:84,pad:4,live:!pre,sw:1.4,r:3,glow:2.5})}</span>`}
+   ${g.state==="in"?`<span class="m2chips"><span>Chat · ${kfmt(roomViewers(g))}</span>${g.kind==="bb"?"<span>Guess the next play</span>":""}</span>`:pre?`<span class="m2chips"><span>Pre-match chat · ${kfmt(roomViewers(g))}</span></span>`:""}
    <span class="m2ft">${m?`<span class="m2sw ${m.after<m.before?"dn":""}">${sgn(m.after-m.before)}</span><span class="m2pl">${esc(hl(m))}${(f=>f&&f.k==="erased"?` <em class="m2er">· erased in the ${f.at}</em>`:"")(fateOf(g,m))}</span>`:`<span class="m2pl">${pre?`${esc(g.an)} at ${esc(g.bn)}`:"No big swing yet"}</span>`}${g.moments.length?`<span class="m2deck" data-deck="${g.id}"><svg width="8" height="10" viewBox="0 0 10 12"><path d="M1 1l8 5-8 5z" fill="currentColor"/></svg>Flips</span>`:""}<svg class="m2go" width="8" height="13" viewBox="0 0 8 13"><path d="M1.5 1.5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>`}
 function loungeRow(g){const P=finalPath(g);const{i,d}=flipIx(P);const dec=decided(g);const w=dec?fWinner(g):null;const top=w||g.cands.slice().sort((a,b)=>Math.abs(b.after-b.before)-Math.abs(a.after-a.before))[0];
   return`<button class="mrow" data-deck="${g.id}">${sigSVG(P,{W:96,H:52,pad:4,sw:1.1,r:2.4,glow:2,fixed:1})}
@@ -1879,7 +1880,10 @@ function startReplay(id,opt){opt=opt||{};const g=REAL.find(x=>x.id===id&&x.state
     else if(RP.t>=1){clearInterval(RPT);const m=topSwingMoment(g);RP=null;toast("Replay over",m?`The flip was ${sgn(m.after-m.before)}: ${esc(hl(m))}`:"That's the game.")}
     if(UI.view==="games"){const el=$("#realList");if(el)el.innerHTML=liveListHTML()}updateLivePill()},300);
   if(!opt.auto){UI.roomId=g.id+"_rp";setView("room")}}
-function liveListHTML(){const realLive=REAL.filter(g=>g.state==="in"||g.state==="pre").sort((a,b)=>folScore(b.a,b.b)-folScore(a.a,a.b));const items=realLive.concat(RP?[rpSnap()]:[]);
+function liveListHTML(){const inG=REAL.filter(g=>g.state==="in").sort((a,b)=>folScore(b.a,b.b)-folScore(a.a,a.b)||(brewing(b)-brewing(a))||lgRank(a)-lgRank(b));const preG=REAL.filter(g=>g.state==="pre").sort((a,b)=>Date.parse(a.start||0)-Date.parse(b.start||0)||folScore(b.a,b.b)-folScore(a.a,a.b));
+  const liveItems=inG.concat(RP?[rpSnap()]:[]);if(preG.length){const byL={};preG.sort((a,b)=>lgRank(a)-lgRank(b)||Date.parse(a.start||0)-Date.parse(b.start||0)).forEach(g=>{(byL[g.league]=byL[g.league]||[]).push(g)});
+    return(liveItems.length?liveItems.map(loungeLiveCard).join(""):`<div class="slimempty">Nothing live right now.</div>`)+Object.entries(byL).map(([lg,l])=>`<div class="ghead sub2" style="margin:18px 0 6px">${esc(lg)} · pre-match lounges</div>`+l.map(loungeLiveCard).join("")).join("")}
+  const items=liveItems;
   const done=REAL.filter(g=>g.state==="post");
   return items.length?items.map(loungeLiveCard).join(""):`<div class="slimempty">Nothing live right now. Tracked games appear here the moment they start.</div>${done.length?`<button class="rpbtn" data-replay="${done[0].id}"><svg width="12" height="14" viewBox="0 0 10 12"><path d="M1 1l8 5-8 5z" fill="currentColor"/></svg><div>Replay ${esc(done[0].a)} @ ${esc(done[0].b)} live<span>Spoiler-free, about a minute. Watch the line move and the flip land.</span></div></button>`:""}`}
 /* ===== takes ===== */
@@ -1912,24 +1916,55 @@ const CHAT_GEN=["this bullpen is a fucking crime scene","ump's zone is shaped li
 const CHAT_FLIP=["OH MY GOD","{N} feet of pure disrespect","GET THAT SHIT OUTTA HERE","that's the game. that's the fucking game","{B} bullpen just got cooked","pitcher is going to hear that one in his sleep","flip it. FLIP IT.","I screamed and my neighbour knocked on the wall"];
 const CHAT_DOWN=["no no no no no","what the fuck was that","we just threw it away","I'm sick","this team will be the death of me"];
 const CHAT_BREW=["don't you fucking dare","I can't watch this","tying run on, I'm standing up","here we go here we go","pucker time","if this blows up I'm deleting the app","close the game. CLOSE IT."];
+const CHATP={
+ Baseball:{u:["dodgerdog_88","chopchop_atl","bullpen_hater","tomahawk_tom","LAgrinder","sweaty_palms","umpshow","cali_kid","ozzie_szn","deadball_dee","freddie_fan","peachstate_pete","blue_heaven","late_innings","zonewatch"]},
+ Football:{u:["blitz_boy","redzone_rick","4th_and_hope","pocket_presence","sundayscaries","flagonthefield","qb_whisperer","fantasy_ruined","tailgate_tina","pickSix_pat","hashmark_hank","coverage_bust"],
+  gen:["this o-line is a fucking turnstile","refs have money on this game I swear","{B} defence playing like it's a bye week","run the damn ball","who is calling these plays, my uncle?","that was holding on every snap and you know it","my fantasy team is in shambles","{A} fans awfully quiet in here","3rd and long again, we live here now","that throw was a prayer and god said no","punt? PUNT? coward","{B} secondary got cooked on that one","clock management from hell","I've aged ten years this quarter","nobody tackles anymore, they just hug","the challenge flag is right there coach","we are so back. or so done. unclear","hold the line, hold the fucking line","two minute drill, here we go","that's PI from space"],
+  flip:["OH MY GOD","TOUCHDOWN BABY","that's the game. that's the fucking game","pick six!? PICK SIX","flip it. FLIP IT.","I screamed and my neighbour knocked on the wall","house call","he's gone, nobody's catching him"],
+  down:["no no no no no","what the fuck was that","we just threw it away","fumble. of course. of course","I'm sick","this team will be the death of me"],
+  brew:["don't you fucking dare","one stop, ONE STOP","I can't watch this","here we go here we go","onside kick incoming, I can feel it","if this blows up I'm deleting the app","just kneel it. KNEEL IT."],
+  pre:["{A} by 10, book it","if {B} lose this I'm muting football for a week","inactives are out, this could get ugly","who's everyone's anytime TD","coin toss is the most nervous I'll be all day","{B} at home in November hits different","weather looks nasty, under it is","{A} o-line vs this pass rush is a mismatch","starting fantasy lineup set, now pray","kickoff can't come fast enough","{B} secondary has to show up today","calling it now, this one goes to the wire"]},
+ Basketball:{u:["and1_andy","splash_bro_jo","paint_beast","flopwatch","heatcheck_hal","bench_mob","clutch_gene","fourthqtr_fred","rim_rattler","no_defense_dan","stepback_steph","whistle_hater"],
+  gen:["that's a travel in every league on earth","{B} defence is optional apparently","refs swallowed the whistle","how is that not a foul","{A} living at the line","run a play. ANY play","this pace is unwatchable and I love it","heat check, he's cooking","{B} bench has been a war crime","bro took four steps and they called nothing","switching everything and still getting torched","{A} fans awfully quiet in here","we are so back. or so done. unclear","free throws are free for a reason","timeout. please. call a timeout"],
+  flip:["OH MY GOD","BANG","from the logo??","that's the dagger","flip it. FLIP IT.","I screamed and my neighbour knocked on the wall","put him on a poster"],
+  down:["no no no no no","what the fuck was that","turnover city","we just threw it away","I'm sick"],
+  brew:["don't you fucking dare","get a stop","I can't watch this","here we go here we go","foul him, FOUL HIM","close the game. CLOSE IT."],
+  pre:["{A} by double digits, easy","is the star playing or resting again","{B} at home is a different team","over feels right tonight","calling a 40 piece tonight","injury report is a mess","tip-off can't come soon enough","this is a statement game for {B}"]},
+ Hockey:{u:["five_hole_fred","cellyking","top_shelf_tom","zamboni_zack","penalty_box_pat","icing_ivan","goalie_guru","sin_bin_sam","hat_trick_hal","barnburner","bardown_bev","pk_hero"],
+  gen:["this ref is blind, that was a trip","{B} goalie is standing on his head","get the puck deep, it's not hard","power play is a disaster","{A} fans awfully quiet in here","that's goalie interference all day","someone hit somebody please","dump and chase, chase and pray","we are so back. or so done. unclear","shoot the puck!!!","{B} defence is a turnstile tonight","line changes are killing us"],
+  flip:["OH MY GOD","BAR DOWN","what a snipe","that's the game","flip it. FLIP IT.","celly of the year","top cheese"],
+  down:["no no no no no","soft goal, so soft","what the fuck was that","I'm sick","give up the empty netter, why not"],
+  brew:["pull the goalie","don't you fucking dare","I can't watch this","here we go here we go","six on five, let's go","just clear it. CLEAR IT."],
+  pre:["{A} in regulation, book it","who's in net tonight","{B} power play has been elite","feels like a 6-5 barnburner","puck drop can't come fast enough","rivalry night, gloves might come off"]},
+ Soccer:{u:["kopite_kev","gooner4life","var_victim","tiki_taka_tom","offside_oscar","the_away_end","sunday_league_sam","park_the_bus","row_z_rob","topbins_tia","clean_sheet_cj","injury_time_ian"],
+  gen:["VAR is a fucking crime scene","ref's been bought, no doubt","{B} midfield has gone missing","why are we passing it backwards AGAIN","that's a stonewall pen","{A} fans awfully quiet in here","get it wide and cross it ffs","keeper's had a stinker","this is a proper game of football","we are so back. or so done. unclear","sub him off, he's been anonymous","shoot!!! SHOOT!!!","{B} defending like a sunday league side","the press is suffocating","how is that not a card","my heart rate is 140 and I'm on a couch","linesman needs glasses","park the bus, park the bus"],
+  flip:["OH MY GOD","GET IN","WHAT A GOAL","top bins!!","that's the game. that's the fucking game","flip it. FLIP IT.","I screamed and my neighbour knocked on the wall","limbs everywhere"],
+  down:["no no no no no","what the fuck was that","offside surely","we just threw it away","I'm sick","this club will be the death of me"],
+  brew:["blow the whistle ref","don't you fucking dare","I can't watch this","corner, everyone up","here we go here we go","just hoof it. HOOF IT."],
+  pre:["line-ups are out, that bench is wild","{A} to nick it 2-1","if {B} drop points here I'm done","atmosphere looks electric","who's starting up top","calling a red card today","{B} at home under the lights, bring it","feels like a draw but I'm scared","kick-off can't come fast enough"]}};
+CHATP.Baseball.gen=CHAT_GEN;CHATP.Baseball.flip=CHAT_FLIP;CHATP.Baseball.down=CHAT_DOWN;CHATP.Baseball.brew=CHAT_BREW;
+CHATP.Baseball.pre=["lineups are out","{A} ace on the mound, under it is","{B} need this one bad","first pitch can't come fast enough","calling a homer in the 1st"];
+function chatSport(g){const k=g&&g.sport;return CHATP[k]?k:(g&&g.kind==="soc"?"Soccer":g&&g.kind==="hk"?"Hockey":g&&g.kind==="fb"?"Football":"Baseball")}
+function chatP(g,t){const c=CHATP[chatSport(g)];if(g&&g.state==="pre"&&(t==="gen"||t==="brew"))return c.pre;return c[t]||c.gen}
+function chatU(g){return CHATP[chatSport(g)].u}
 const PK_OPTS=[{k:"O",l:"Out",p:1},{k:"H",l:"Hit",p:3},{k:"K",l:"Strikeout",p:2},{k:"BB",l:"Walk",p:4}];
 function paClass(t){t=String(t||"");if(/struck out/.test(t))return"K";if(/walked|hit by pitch/.test(t))return"BB";if(/singled|doubled|tripled|homered/.test(t))return"H";if(/(grounded|flied|lined|popped|fouled) (out|into)|double play|sacrifice|reached on|out at first/.test(t))return"O";return null}
 const ROOM={id:null,msgs:[],seen:new Set(),brew:false,pk:null,lastBot:0,last:null,ended:false};let ROOMT=null;
 function roomGame(){const id=UI.roomId;if(!id)return null;if(String(id).endsWith("_rp"))return RP?rpSnap():null;return REAL.find(g=>g.id===id)||null}
-function roomViewers(g){const x=g.path&&g.path.length?g.path[g.path.length-1][0]:0;return Math.round(1400+(hsh(g.id)%900)+x*2600+(brewing(g)?900:0))}
+function roomViewers(g){if(g.state==="pre")return Math.round(300+(hsh(g.id)%700));const x=g.path&&g.path.length?g.path[g.path.length-1][0]:0;return Math.round(1400+(hsh(g.id)%900)+x*2600+(brewing(g)?900:0))}
 function fill(t,g,extra){const A=tname(g.a),B=tname(g.b);return t.replace(/\{A\}/g,A).replace(/\{B\}/g,B).replace(/\{N\}/g,(extra&&extra.n)||"400")}
 function pushMsg(m){m.at=m.at||Date.now();if(m.kind==="sys"&&m.cls==="flip"&&/^FLIP/.test(m.html)){ROOM.flipAt=m.at;const d=document.createElement("div");d.innerHTML=m.html;ROOM.flipTxt=d.textContent}ROOM.msgs.push(m);if(ROOM.msgs.length>160)ROOM.msgs.shift();const box=$("#rmChat");if(box){box.insertAdjacentHTML("beforeend",msgHTML(m));if(ROOM.pinned!==false||m.kind==="me"){ROOM.pinned=true;stick(box)}}}
 function stick(box){ROOM.auto=Date.now();box.scrollTop=box.scrollHeight}
 function msgHTML(m){if(m.kind==="sys")return`<div class="cm sys ${m.cls||""}">${m.html}</div>`;const c=`hsl(${hsh(m.u)%360} 55% 68%)`;return`<div class="cm ${m.kind==="me"?"me":""}"><span class="cc">${esc(m.clock||"")}</span><b style="--uc:${c}">${esc(m.u)}</b>${esc(censor(m.t))}</div>`}
 function botSay(g,pool,extra){ROOM.recent=ROOM.recent||[];let t,k=0;do{t=pool[Math.floor(Math.random()*pool.length)];k++}while(ROOM.recent.includes(t)&&k<12);ROOM.recent.push(t);if(ROOM.recent.length>Math.min(10,pool.length-1))ROOM.recent.shift();
-  let u;do{u=CHAT_USERS[Math.floor(Math.random()*CHAT_USERS.length)]}while(u===ROOM.lastU);ROOM.lastU=u;pushMsg({u,t:fill(t,g,extra),clock:g.clock,kind:"msg"})}
+  const US=chatU(g);let u;do{u=US[Math.floor(Math.random()*US.length)]}while(u===ROOM.lastU);ROOM.lastU=u;pushMsg({u,t:fill(t,g,extra),clock:g.state==="pre"?"Pre":String(g.clock).replace(/^.*? - /,""),kind:"msg"})}
 function roomStep(g){const now=Date.now();
   for(const m of g.moments){if(ROOM.seen.has(m.id))continue;ROOM.seen.add(m.id);const sw=m.after-m.before;if(Math.abs(sw)<10)continue;
     const big=Math.abs(sw)>=15;pushMsg({kind:"sys",cls:big?"flip":"",html:`${big?"FLIP · ":""}${esc(m.clock)} · <b>${sgn(sw)}</b> ${esc(hl(m))}`});
-    const ft=(m.t||"").match(/\((\d+) feet\)/);const pool=(sw>0)?CHAT_FLIP:CHAT_DOWN;for(let k=0;k<(big?4:2);k++)setTimeout(()=>{const gg=roomGame()||g;botSay(gg,pool,{n:ft?ft[1]:"400"})},250+k*380)}
-  const b=brewing(g);if(b&&!ROOM.brew){pushMsg({kind:"sys",cls:"brew",html:`Flip brewing · ${esc(g.clock)} · ${esc(g.team)} ${Math.round(g.path[g.path.length-1][1])}%. Pick'em points are doubled.`});for(let k=0;k<3;k++)setTimeout(()=>botSay(roomGame()||g,CHAT_BREW),300+k*450)}
+    const ft=(m.t||"").match(/\((\d+) feet\)/);const pool=chatP(g,sw>0?"flip":"down");for(let k=0;k<(big?4:2);k++)setTimeout(()=>{const gg=roomGame()||g;botSay(gg,pool,{n:ft?ft[1]:"400"})},250+k*380)}
+  const b=brewing(g);if(b&&!ROOM.brew){pushMsg({kind:"sys",cls:"brew",html:`Flip brewing · ${esc(g.clock)} · ${esc(g.team)} ${Math.round(g.path[g.path.length-1][1])}%. Pick'em points are doubled.`});for(let k=0;k<3;k++)setTimeout(()=>botSay(roomGame()||g,chatP(g,"brew")),300+k*450)}
   ROOM.brew=b;
-  if(now-ROOM.lastBot>(b?650:1300)+Math.random()*900){ROOM.lastBot=now;botSay(g,b?CHAT_BREW.concat(CHAT_GEN):CHAT_GEN)}}
+  if(now-ROOM.lastBot>(b?650:g.state==="pre"?2600:1300)+Math.random()*900){ROOM.lastBot=now;botSay(g,b?chatP(g,"brew").concat(chatP(g,"gen")):chatP(g,"gen"))}}
 /* pick'em */
 function paList(g){return(g.log||[]).map((q,i)=>({id:q.id,x:q.x,t:q.txt,c:q.c,k:paClass(q.txt),i})).filter(q=>q.k).sort((a,b)=>a.x-b.x||b.i-a.i)}
 function pkStats(){return S.pk||(S.pk={pts:0,streak:0,best:0,n:0,right:0})}
@@ -1941,14 +1976,14 @@ function pkStep(g){if(g.sport&&g.sport!=="Baseball"&&g.kind!=="bb")return;if(!RO
   if(!pk.choice){pkOpen(g);return}
   const st=pkStats(),ok=nxt.k===pk.choice,opt=PK_OPTS.find(o=>o.k===pk.choice),pts=ok?opt.p*pk.mult:0;st.n++;if(ok){st.right++;st.streak++;st.pts+=pts;st.best=Math.max(st.best,st.streak)}else st.streak=0;save();
   pk.res={ok,pts,play:nxt,at:Date.now()};if(ok&&st.streak>=3)pushMsg({kind:"sys",html:`You're on a ${st.streak}-pick streak. ${st.pts} pts.`})}
-function pickHTML(g){if(g.kind!=="bb")return`<div class="pkq"><b>Pick'em</b><span class="pkst">Coming soon for this sport</span></div>`;const st=pkStats(),pk=ROOM.pk;if(!pk)return"";
+function pickHTML(g){if(g.state==="pre")return"";if(g.kind!=="bb")return`<div class="pkq"><b>Pick'em</b><span class="pkst">Coming soon for this sport</span></div>`;const st=pkStats(),pk=ROOM.pk;if(!pk)return"";
   const head=`<div class="pkq"><b>${pk.res?"Result":"Guess the next play"}</b><span class="pkst">Streak ${st.streak} · ${st.pts} pts</span></div>`;
   if(pk.res){const r=pk.res,lab={O:"an out",H:"a hit",K:"a strikeout",BB:"a walk"}[r.play.k];return head+`<div class="pkres"><b class="${r.ok?"ok":"no"}">${r.ok?`+${r.pts}`:"Miss"}</b><span>${r.ok?"Called it.":`It was ${lab}.`} ${esc(hl({t:r.play.t}))}</span></div>`}
   const btns=`<div class="pkbtns">${PK_OPTS.map(o=>`<button data-pk="${o.k}" class="${pk.choice===o.k?"on":""}" ${pk.choice?"disabled":""}>${o.l}<i>+${o.p*pk.mult}</i></button>`).join("")}</div>`;
   if(!pk.choice)return head+btns+(pk.mult>1?`<div class="pkx">Double points while the flip is brewing</div>`:"");
   const sp=pkSplit(pk.seed);return head+btns+PK_OPTS.map(o=>`<div class="pkbar ${o.k===pk.choice?"me":""}"><span>${o.l}</span><span class="tr"><i style="width:${sp[o.k]}%"></i></span><span>${sp[o.k]}%</span></div>`).join("")+`<div class="pkst">Locked in. Waiting for the play…</div>`}
 function roomInit(g){if(ROOM.id===g.id)return;Object.assign(ROOM,{id:g.id,msgs:[],seen:new Set(g.moments.map(m=>m.id)),brew:brewing(g),pk:null,lastBot:0,ended:false,flipAt:0,flipTxt:""});
-  for(let k=0;k<6;k++){const u=CHAT_USERS[(hsh(g.id)+k*5)%CHAT_USERS.length];ROOM.msgs.push({u,t:fill(CHAT_GEN[(hsh(g.id)+k*7)%CHAT_GEN.length],g),clock:g.clock,kind:"msg",at:Date.now()})}}
+  const US=chatU(g),PL=chatP(g,"gen");for(let k=0;k<6;k++){const u=US[(hsh(g.id)+k*5)%US.length];ROOM.msgs.push({u,t:fill(PL[(hsh(g.id)+k*7)%PL.length],g),clock:g.state==="pre"?"Pre":g.clock,kind:"msg",at:Date.now()})}}
 function buildRoom(){let g=roomGame();if(!g&&ROOM.last&&ROOM.id===(ROOM.last&&ROOM.last.id))g=ROOM.last;if(!g){setView("games");return}
   roomInit(g);if(false){
     for(let k=0;k<6;k++){const u=CHAT_USERS[(hsh(g.id)+k*5)%CHAT_USERS.length];ROOM.msgs.push({u,t:fill(CHAT_GEN[(hsh(g.id)+k*7)%CHAT_GEN.length],g),clock:g.clock,kind:"msg"})}}
@@ -1966,25 +2001,26 @@ function buildRoom(){let g=roomGame();if(!g&&ROOM.last&&ROOM.id===(ROOM.last&&RO
   const box=$("#rmChat");ROOM.pinned=true;const userScroll=()=>{ROOM.user=Date.now()};["wheel","touchstart","pointerdown","keydown"].forEach(k=>box.addEventListener(k,userScroll,{passive:true}));box.addEventListener("scroll",()=>{if(!ROOM.user||Date.now()-ROOM.user>1500)return;ROOM.pinned=box.scrollHeight-box.scrollTop-box.clientHeight<80},{passive:true});requestAnimationFrame(()=>stick(box));paintRoom()}
 function paintRoom(){if(UI.view!=="room")return;let g=roomGame();if(!g){if(!ROOM.last)return;g=ROOM.last;if(!ROOM.ended){ROOM.ended=true;pushMsg({kind:"sys",cls:"flip",html:"Replay over. That's the ballgame."})}}else{ROOM.last=g;roomStep(g);pkStep(g)}
   const P=g.path||[],wp=P.length?Math.round(P[P.length-1][1]):50,bw=!ROOM.ended&&brewing(g);{const sc=$("#rmScore");if(sc)sc.textContent=g.as===""?"vs":`${g.as}–${g.bs}`}
-  $("#rmHead").innerHTML=`<span class="clk">${ROOM.ended?"":LIVEDOT}${esc(ROOM.ended?"Final":g.clock)}${g.replay?` <span class="rptag">${g.sim?"SIMULATED":"REPLAY"}</span>`:""}</span><span>${kfmt(roomViewers(g))} watching</span><span class="wp">${wp}%<span>${esc(g.team)} win</span></span>`;
+  $("#rmHead").innerHTML=`<span class="clk">${ROOM.ended||g.state==="pre"?"":LIVEDOT}${esc(ROOM.ended?"Final":g.state==="pre"?"Pre-match · starts "+String(g.clock).replace(/^.*? - /,""):g.clock)}${g.replay?` <span class="rptag">${g.sim?"SIMULATED":"REPLAY"}</span>`:""}</span><span>${kfmt(roomViewers(g))} ${g.state==="pre"?"here early":"watching"}</span>${g.state==="pre"?"":`<span class="wp">${wp}%<span>${esc(g.team)} win</span></span>`}`;
   $("#rmChart").innerHTML=sigSVG(P,{W:360,H:96,pad:4,live:!ROOM.ended,sw:1.6,r:3,glow:2.5});$("#rmChart").classList.toggle("brew",bw);
   $("#rmBrew").innerHTML=bw?`<div class="rmbrew"><i></i>Flip brewing · late and still in reach. Points doubled.</div>`:"";
   {const box=$("#rmChat");if(box&&ROOM.pinned!==false)requestAnimationFrame(()=>stick(box))}
   $("#rmPick").innerHTML=ROOM.ended?`<div class="pkq"><b>Pick'em</b><span class="pkst">Final: ${pkStats().right}/${pkStats().n} right · ${pkStats().pts} pts · best streak ${pkStats().best}</span></div>`:pickHTML(g)}
 /* floating live pill */
-function livePillTarget(){if(RP)return rpSnap();return REAL.find(g=>g.state==="in")||null}
+const LGR=["NFL","Premier League","NBA","LaLiga","Champions League","MLB","NHL","Serie A","Bundesliga","College Football","Ligue 1","MLS","Championship"];function lgRank(g){const i=LGR.indexOf(g.league);return i<0?99:i}
+function livePillTarget(){if(RP)return rpSnap();const l=REAL.filter(g=>g.state==="in");if(!l.length)return null;const cur=l.find(g=>g.id===ROOM.id);const best=l.slice().sort((a,b)=>brewing(b)-brewing(a)||folScore(b.a,b.b)-folScore(a.a,a.b)||lgRank(a)-lgRank(b)||Math.abs(50-(a.path.length?a.path[a.path.length-1][1]:50))-Math.abs(50-(b.path.length?b.path[b.path.length-1][1]:50)))[0];return cur&&!(brewing(best)&&!brewing(cur))?cur:best}
 function pillTop(){const now=Date.now();const c=ROOM.msgs.filter(m=>m.kind==="msg"&&now-m.at<45000);if(!c.length)return null;
   return c.slice().sort((a,b)=>((hsh(b.t+b.u)%400)+(b.at-now)/150)-((hsh(a.t+a.u)%400)+(a.at-now)/150))[0]}
 function updateLivePill(){let el=$("#livePill");const sc=$("#screen");if(!sc)return;
   if(!el){el=document.createElement("button");el.id="livePill";el.className="livepill2";sc.appendChild(el);
     el.onclick=e=>{const g=livePillTarget();if(!g)return;if(e.target.closest(".lpx")){UI.pillHide=UI.pillHide||{};UI.pillHide[g.id]=1;el.hidden=true;sc.classList.remove("haspill");return}UI.roomId=g.id;setView("room")}}
-  const g=livePillTarget();if(g&&UI.view!=="room"){roomInit(g);roomStep(g)}
+  const g=livePillTarget();if(g&&UI.view!=="room"){roomInit(g);roomStep(g)}if(g&&ROOM.id!==g.id){el.hidden=true;sc.classList.remove("haspill");return}
   const show=!!g&&["feed","games","top"].includes(UI.view)&&!(UI.pillHide&&UI.pillHide[g.id]);el.hidden=!show;sc.classList.toggle("haspill",show);if(!show)return;
   const bw=brewing(g),now=Date.now(),flipNow=ROOM.flipAt&&now-ROOM.flipAt<8000;
   let mode,txt;
   if(flipNow){mode="flip";txt=esc(ROOM.flipTxt)}
   else if(bw&&Math.floor(now/6500)%2===0){mode="brew";txt=`Flip brewing · ${esc(g.clock)} · ${esc(g.team)} ${Math.round(g.path[g.path.length-1][1])}%`}
-  else{const top=Math.floor(now/7000)%2===1?pillTop():null;if(top){mode="msg:"+top.t;txt=`<em>${esc(top.u)}</em>“${esc(censor(top.t))}”`}else{mode="status";txt=`${g.sim?"Simulated · ":""}${kfmt(roomViewers(g))} in chat · Guess the next play`}}
+  else{const top=Math.floor(now/7000)%2===1?pillTop():null;if(top){mode="msg:"+top.t;txt=`<em>${esc(top.u)}</em>“${esc(censor(top.t))}”`}else{mode="status";txt=`${g.sim?"Simulated · ":""}${kfmt(roomViewers(g))} in chat · ${g.kind==="bb"?"Guess the next play":esc(String(g.clock).replace(/^.*? - /,""))}`}}
   el.classList.toggle("brew",bw);el.classList.toggle("flip",!!flipNow);
   const key=mode+"|"+g.a+g.b+(mode==="status"?"":txt);if(el.dataset.key===key)return;el.dataset.key=key;
   el.setAttribute("aria-label",`${g.a} at ${g.b} live. Open the live room.`);
