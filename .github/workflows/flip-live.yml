@@ -1,7 +1,7 @@
 name: Flip live feed
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
@@ -11,20 +11,28 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 70
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Pull today's games
-        run: |
-          python pull_all.py feed_full.json $(TZ=America/New_York date +%Y%m%d)
-          python compact.py feed_full.json feed.json 600000
-          rm -f feed_full.json
-      - name: Save feed.json
+      - name: Refresh feed every 6 minutes for about an hour
         run: |
           git config user.name "flip-bot"
           git config user.email "flip-bot@users.noreply.github.com"
-          git add feed.json
-          git diff --cached --quiet || (git commit -m "Live feed $(date -u +%H:%M)" && git push)
+          end=$(( $(date +%s) + 3300 ))
+          while [ $(date +%s) -lt $end ]; do
+            python pull_all.py feed_full.json $(TZ=America/New_York date +%Y%m%d) > /dev/null 2>&1 || echo "pull failed"
+            if [ -s feed_full.json ]; then
+              python compact.py feed_full.json feed.json 600000
+              rm -f feed_full.json
+              git add feed.json
+              if ! git diff --cached --quiet; then
+                git commit -q -m "Live feed $(date -u +%H:%M)"
+                git pull -q --rebase -X theirs origin main || true
+                git push -q origin HEAD:main || echo "push failed"
+              fi
+            fi
+            sleep 360
+          done
