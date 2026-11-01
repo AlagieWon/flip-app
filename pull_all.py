@@ -57,7 +57,12 @@ def base(ev, sport_label, league, kind, H, A, team, path, moments, log, src, tic
             'b': H['team']['abbreviation'], 'bn': H['team'].get('shortDisplayName') or H['team']['abbreviation'], 'as': int(A.get('score') or 0), 'bs': int(H.get('score') or 0),
             'state': st['state'], 'clock': 'Final' if st['state'] == 'post' else st.get('shortDetail', ''), 'team': team, 'kind': kind, 'wpsrc': wpsrc,
             'ac': lighten(A['team'].get('color', '')), 'bc': lighten(H['team'].get('color', '')), 'ticks': ticks, 'path': path, 'moments': moments, 'missed': [],
-            'log': log, 'date': 'Today', 'source': src}
+            'log': log, 'date': 'Today', 'source': src, 'start': ev.get('date')}
+def pre_game(ev, sport_label, league, kind, url):
+    comp = ev['competitions'][0]
+    H = [c for c in comp['competitors'] if c['homeAway'] == 'home'][0]; A = [c for c in comp['competitors'] if c['homeAway'] == 'away'][0]
+    g = base(ev, sport_label, league, kind, H, A, H['team']['abbreviation'], [], [], [], {'name': 'ESPN', 'url': url}, [], 'espn' if kind != 'hk' else 'model')
+    g['as'] = g['bs'] = ''; g['clock'] = ev['status']['type'].get('shortDetail', ''); return g
 
 def tidy(t):
     t = re.sub(r'^\(\s*\d+:\d+\s*\)\s*', '', t)
@@ -172,14 +177,17 @@ games = []
 for sp, league, kind, pmin, thr in SPORTS:
     sb = get(f"https://site.api.espn.com/apis/site/v2/sports/{sp}/scoreboard?dates={DATE}", f"sb_{kind}_{league[:3]}.json")
     for ev in sb.get('events', []):
-        if ev['status']['type']['state'] == 'pre': continue
+        if ev['status']['type']['state'] == 'pre':
+            if kind == 'fb' and league == 'College Football': continue  # 60+ pre-game CFB games would swamp the Lounge
+            games.append(pre_game(ev, {'fb': 'Football', 'bk': 'Basketball'}[kind], league, kind, f"https://www.espn.com/{sp.split('/')[1]}/game/_/gameId/{ev['id']}")); continue
         try:
             g = espn_game(sp, league, kind, pmin, thr, ev)
             if g: games.append(g)
         except Exception as e: print('skip', league, ev['id'], e)
 sb = get(f"https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates={DATE}", 'sb_nhl.json')
 for ev in sb.get('events', []):
-    if ev['status']['type']['state'] == 'pre': continue
+    if ev['status']['type']['state'] == 'pre':
+        games.append(pre_game(ev, 'Hockey', 'NHL', 'hk', f"https://www.espn.com/nhl/game/_/gameId/{ev['id']}")); continue
     try:
         g = nhl_game(ev)
         if g: games.append(g)
@@ -196,6 +204,7 @@ if os.path.exists(extra):
 else: games_x = []
 json.dump({'updatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds'), 'games': games + soc + games_x}, open(OUT, 'w'), separators=(',', ':'))
 for g in games:
+    if g['state'] == 'pre': print(g['league'][:6], 'pre', g['a'], '@', g['b'], g['clock']); continue
     top = max(g['moments'], key=lambda m: abs(m['after'] - m['before']), default=None)
     print(g['league'][:6], g['state'], g['a'], g['as'], '@', g['b'], g['bs'], g['clock'], '| flip', (top['clock'], top['before'], '->', top['after'], top['t'][:60]) if top else None)
 print(len(games), 'us games +', len(soc), 'soccer')
