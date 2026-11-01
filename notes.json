@@ -1,0 +1,21 @@
+{
+ "soc_401879246": {
+  "moments": [
+   {
+    "clock": "16'",
+    "cat": "Keeper error",
+    "t": "Alisson gives it away, Havertz scores",
+    "d": "Alisson tries to play out from the back under pressure and doesn't find a teammate. Arsenal move it right and into the box, and Havertz finishes from six yards off Declan Rice's cross."
+   }
+  ],
+  "calls": [
+   {
+    "clock": "29'",
+    "team": "LIV",
+    "t": "Gakpo goes down under Tzolis, no penalty",
+    "ctx": "Tzolis's hands on Gakpo in the box · Madley waves it away, VAR checks and agrees",
+    "d": "Liverpool wanted a penalty. Gary Neville said it was the right call."
+   }
+  ]
+ }
+}
