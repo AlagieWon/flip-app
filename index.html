@@ -908,6 +908,33 @@ body.bleed .reel.r2 .r2hero{top:calc(env(safe-area-inset-top,0px) + 136px)}
 .rracts{display:flex;gap:8px;margin-top:14px}.rracts .btn{flex:1}
 .btn.wht{background:#f2f2f2;color:#0a0a0a}
 .rmpick:empty{display:none}
+/* ===== game switcher (room) ===== */
+.room{position:relative;isolation:isolate}
+.rmbg{position:absolute;inset:0;z-index:-1;pointer-events:none}
+.rmbg i{position:absolute;inset:0;opacity:0;transition:opacity 700ms cubic-bezier(.2,0,0,1)}
+.rmbg i.on{opacity:1}
+.gstrip{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px;-webkit-mask-image:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent);mask-image:linear-gradient(90deg,transparent,#000 16px,#000 calc(100% - 16px),transparent)}
+.gstrip::-webkit-scrollbar{display:none}
+.gp{flex:none;height:34px;padding:0 11px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:#bdbdbd;display:inline-flex;align-items:center;font:600 12px var(--body);white-space:nowrap;cursor:pointer;transition:background 220ms cubic-bezier(.2,0,0,1),border-color 220ms cubic-bezier(.2,0,0,1),color 220ms}
+.gp:first-child{margin-left:14px}.gp:last-child{margin-right:14px}
+.gp.on{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.24);color:#fff}
+.gp .pl-logo,.gp .pl-text{display:inline-flex;align-items:center;gap:5px;overflow:hidden;transition:max-width 280ms cubic-bezier(.2,0,0,1),opacity 180ms cubic-bezier(.2,0,0,1)}
+.gp .pl-logo{max-width:0;opacity:0}
+.gp .pl-text{max-width:150px;opacity:1}
+.gp.on .pl-logo{max-width:90px;opacity:1}
+.gp.on .pl-text{max-width:0;opacity:0}
+.gp .pl-logo .at{font:600 11px var(--body);color:#9a9a9a}
+.gp .dot{width:6px;height:6px;border-radius:50%;background:#ff453a;flex:none}
+.rmhero{position:relative;height:88px;margin:4px 0 6px;overflow:hidden;touch-action:pan-y}
+.rh-in{position:absolute;inset:0;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 18px;transition:transform 260ms cubic-bezier(.2,0,0,1),opacity 220ms cubic-bezier(.2,0,0,1)}
+.rh-t{display:flex;flex-direction:column;align-items:center;gap:5px;font:700 11px var(--mono);color:#cfcfcf;letter-spacing:.04em}
+.rh-mid{display:flex;flex-direction:column;align-items:center;gap:3px}
+.rh-sc{font:800 40px/1 var(--display);letter-spacing:-.03em;color:#fff;font-variant-numeric:tabular-nums;transition:opacity 160ms}
+.rh-sub{font:500 11px var(--mono);color:#9a9a9a;letter-spacing:.03em;white-space:nowrap}
+.rh-in.from-r{transform:translateX(40px);opacity:0}.rh-in.from-l{transform:translateX(-40px);opacity:0}
+.rh-in.to-l{transform:translateX(-40px);opacity:0}.rh-in.to-r{transform:translateX(40px);opacity:0}
+.rmswipe{text-align:center;font:500 10.5px var(--mono);color:#6a6a6a;margin-top:-2px}
+
 /* ===== design pass 3: story-first cards ===== */
 .reel.rx{display:flex;flex-direction:column;padding:92px 20px 112px;background:radial-gradient(520px 340px at 80% 40%,rgba(245,197,66,.07),transparent 70%),#050505}
 .reel.rx.dnr{background:radial-gradient(520px 340px at 80% 40%,rgba(255,91,79,.06),transparent 70%),#050505}
@@ -2060,23 +2087,53 @@ function pickHTML(g){if(g.state==="pre")return"";if(g.kind!=="bb")return`<div cl
   const sp=pkSplit(pk.seed);return head+btns+PK_OPTS.map(o=>`<div class="pkbar ${o.k===pk.choice?"me":""}"><span>${o.l}</span><span class="tr"><i style="width:${sp[o.k]}%"></i></span><span>${sp[o.k]}%</span></div>`).join("")+`<div class="pkst">Locked in. Waiting for the play…</div>`}
 function roomInit(g){if(ROOM.id===g.id)return;Object.assign(ROOM,{id:g.id,msgs:[],seen:new Set(g.moments.map(m=>m.id)),brew:brewing(g),pk:null,lastBot:0,ended:false,flipAt:0,flipTxt:""});
   const US=chatU(g),PL=chatP(g,"gen");for(let k=0;k<6;k++){const u=US[(hsh(g.id)+k*5)%US.length];ROOM.msgs.push({u,t:fill(PL[(hsh(g.id)+k*7)%PL.length],g),clock:g.state==="pre"?"Pre":g.clock,kind:"msg",at:Date.now()})}}
+function roomList(){const inG=REAL.filter(g=>g.state==="in").sort((a,b)=>brewing(b)-brewing(a)||lgRank(a)-lgRank(b));const preG=REAL.filter(g=>g.state==="pre").sort((a,b)=>Date.parse(a.start||0)-Date.parse(b.start||0)||lgRank(a)-lgRank(b));return inG.concat(preG)}
+function stripHTML(cur){const l=roomList();if(cur&&!l.some(g=>g.id===cur.id))l.unshift(cur);
+  return l.map(g=>{const on=cur&&g.id===cur.id;const live=g.state==="in";const t=live?`${esc(g.a)} ${esc(g.as)}–${esc(g.bs)} ${esc(g.b)} · ${esc(String(g.clock).replace(/^.*? - /,""))}`:`${esc(g.a)} @ ${esc(g.b)} · ${esc(kickTime(g))}`;
+    return`<button class="gp ${on?"on":""}" role="tab" aria-selected="${on}" data-gp="${g.id}" aria-label="${esc(g.an)} at ${esc(g.bn)}">${live?'<i class="dot" aria-hidden="true"></i>':""}<span class="pl-logo" aria-hidden="true">${tb(g.a,"sm")}<span class="at">@</span>${tb(g.b,"sm")}</span><span class="pl-text">${t}</span></button>`}).join("")}
+function roomBg(g){const a=tc(g.a)||"#333",b=tc(g.b)||"#333";const hx=(c,al)=>{c=String(c);if(!/^#[0-9a-f]{6}$/i.test(c))return`rgba(80,80,80,${al})`;const n=parseInt(c.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${al})`};
+  return`radial-gradient(360px 300px at 0% 0%,${hx(a,.42)},transparent 72%),radial-gradient(360px 300px at 100% 0%,${hx(b,.42)},transparent 72%),radial-gradient(500px 260px at 50% 0%,rgba(0,0,0,.2),transparent),#050505`}
+function heroHTML(g,cls){const pre=g.state==="pre";const sub=pre?`${esc(g.league)} · ${esc(kickTime(g))}${countdown(g)?" · "+esc(countdown(g)):""}`:`${esc(g.league)} · ${esc(String(g.clock).replace(/^.*? - /,""))}`;
+  return`<div class="rh-in ${cls}"><span class="rh-t">${tb(g.a,"lg")}${esc(g.a)}</span><span class="rh-mid"><span class="rh-sc" id="rmScore">${pre?"vs":`${esc(g.as)}–${esc(g.bs)}`}</span><span class="rh-sub">${sub}</span></span><span class="rh-t">${tb(g.b,"lg")}${esc(g.b)}</span></div>`}
+let SWITCHING=false;
+function switchRoom(id,dir){if(SWITCHING||id===UI.roomId)return;const g=REAL.find(x=>x.id===id);if(!g)return;SWITCHING=true;
+  const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;UI.roomId=id;roomInit(g);ROOM.last=g;ROOM.ended=false;
+  // 1. pills: morph + centre
+  const st=$("#gStrip");if(st){st.querySelectorAll(".gp").forEach(b=>{const on=b.dataset.gp===id;b.classList.toggle("on",on);b.setAttribute("aria-selected",on)});const cur=st.querySelector(`[data-gp="${id}"]`);if(cur){const sr=st.getBoundingClientRect(),cr=cur.getBoundingClientRect();st.scrollTo({left:st.scrollLeft+(cr.left-sr.left)-(sr.width-cr.width)/2,behavior:reduce?"auto":"smooth"})}}
+  // 2. team-colour wash crossfades (slowest beat, lands last)
+  const bg=$("#rmBg");if(bg){const old=bg.querySelector("i.on");const n=document.createElement("i");n.style.background=roomBg(g);bg.appendChild(n);requestAnimationFrame(()=>requestAnimationFrame(()=>{n.classList.add("on");if(old)old.classList.remove("on")}));setTimeout(()=>{if(old&&old.parentNode)old.remove()},760)}
+  // 3. header hand-over: old slides out, new slides in; score holds "—" until it lands
+  const hero=$("#rmHero");if(hero){const old=hero.querySelector(".rh-in");if(old){const os=old.querySelector("#rmScore");if(os)os.removeAttribute("id");old.classList.add(dir>0?"to-l":"to-r");setTimeout(()=>old.remove(),280)}
+    hero.insertAdjacentHTML("beforeend",heroHTML(g,dir>0?"from-r":"from-l"));const nw=hero.lastElementChild;const sc=nw.querySelector("#rmScore");const real=sc?sc.textContent:"";ROOM.landing=Date.now()+(reduce?0:300);if(sc&&!reduce){sc.textContent="—";sc.style.opacity=".5"}
+    requestAnimationFrame(()=>requestAnimationFrame(()=>nw.classList.remove("from-r","from-l")));setTimeout(()=>{if(sc){sc.textContent=real;sc.style.opacity=""}},reduce?0:300)}
+  // 4. chat and the rest repaint for the new room
+  const box=$("#rmChat");if(box){box.innerHTML=ROOM.msgs.map(msgHTML).join("");ROOM.pinned=true;stick(box)}
+  const note=document.querySelector(".rmnote");if(note)note.textContent="Simulated chat · prototype";
+  try{navigator.vibrate&&navigator.vibrate(6)}catch(_){}
+  paintRoom();setTimeout(()=>{SWITCHING=false},300)}
+function stepRoom(dir){const l=roomList();const i=l.findIndex(g=>g.id===UI.roomId);if(i<0)return;const n=l[i+dir];if(n)switchRoom(n.id,dir)}
 function buildRoom(){let g=roomGame();if(!g&&ROOM.last&&ROOM.id===(ROOM.last&&ROOM.last.id))g=ROOM.last;if(!g){setView("games");return}
   roomInit(g);if(false){
     for(let k=0;k<6;k++){const u=CHAT_USERS[(hsh(g.id)+k*5)%CHAT_USERS.length];ROOM.msgs.push({u,t:fill(CHAT_GEN[(hsh(g.id)+k*7)%CHAT_GEN.length],g),clock:g.clock,kind:"msg"})}}
   main.innerHTML=`<div class="room" id="room">
-   <div class="rmtop"><button class="backbtn glass" id="rmBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Lounge</button><span class="rmt">${tb(g.a,"sm")}<span id="rmScore">${g.as===""?"vs":`${g.as}–${g.bs}`}</span>${tb(g.b,"sm")}</span><button class="rmclean" id="rmClean" aria-pressed="${!S.clean}" aria-label="Language filter">${S.clean?"Clean":"18+"}</button></div>
+   <div class="rmtop"><button class="backbtn glass" id="rmBack"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Lounge</button><div class="gstrip" id="gStrip" role="tablist" aria-label="Switch game">${stripHTML(g)}</div><button class="rmclean" id="rmClean" aria-pressed="${!S.clean}" aria-label="Language filter">${S.clean?"Clean":"18+"}</button></div>
+   <div class="rmbg" id="rmBg"><i class="on" style="background:${roomBg(g)}"></i></div>
+   <div class="rmhero" id="rmHero">${heroHTML(g,"")}</div>
+   ${roomList().length>1?'<div class="rmswipe">Swipe the score or tap a game to switch</div>':""}
    <div class="rmhead" id="rmHead"></div><div class="rmchart" id="rmChart"></div><div id="rmBrew"></div>
    <div class="rmpick" id="rmPick"></div>
    <div class="rmchat" id="rmChat" aria-live="polite" aria-label="Live chat">${ROOM.msgs.map(msgHTML).join("")}</div>
    <div class="rmnote">${g.sim?"Simulated live game (NLDS Game 3 data) and chat · prototype":g.replay?"Replay with simulated chat · prototype":"Simulated chat · prototype"}</div>
    <form class="rmin" id="rmIn"><input id="rmMsg" placeholder="Talk your talk" maxlength="140" aria-label="Chat message" autocomplete="off"><button type="submit">Send</button></form></div>`;
   $("#rmBack").onclick=()=>setView("games");
+  {const st=$("#gStrip");if(st){st.onclick=e=>{const b=e.target.closest("[data-gp]");if(!b)return;const l=roomList();const i=l.findIndex(x=>x.id===UI.roomId),j=l.findIndex(x=>x.id===b.dataset.gp);switchRoom(b.dataset.gp,j>=i?1:-1)};const cur=st.querySelector(".gp.on");if(cur)requestAnimationFrame(()=>{const sr=st.getBoundingClientRect(),cr=cur.getBoundingClientRect();st.scrollLeft+=(cr.left-sr.left)-(sr.width-cr.width)/2})}
+   const zone=$("#rmHero");if(zone){let x0=null,y0=0;zone.addEventListener("pointerdown",e=>{x0=e.clientX;y0=e.clientY});zone.addEventListener("pointerup",e=>{if(x0==null)return;const dx=e.clientX-x0,dy=e.clientY-y0;x0=null;if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)*1.4)stepRoom(dx<0?1:-1)});zone.addEventListener("pointercancel",()=>{x0=null})}}
   $("#rmClean").onclick=()=>{S.clean=!S.clean;save();buildRoom()};
   $("#rmIn").onsubmit=e=>{e.preventDefault();const v=$("#rmMsg").value.trim();if(!v)return;const gg=roomGame()||ROOM.last;pushMsg({u:"you",t:v,clock:gg?gg.clock:"",kind:"me"});$("#rmMsg").value="";if(Math.random()<.5)setTimeout(()=>{const g2=roomGame()||ROOM.last;if(g2)pushMsg({u:CHAT_USERS[Math.floor(Math.random()*CHAT_USERS.length)],t:["@you facts","@you relax lmao","@you say it louder","@you you're cooked for that one","@you real"][Math.floor(Math.random()*5)],clock:g2.clock,kind:"msg"})},1200)};
   $("#rmPick").onclick=e=>{const b=e.target.closest("[data-pk]");if(!b||!ROOM.pk||ROOM.pk.choice)return;ROOM.pk.choice=b.dataset.pk;try{navigator.vibrate&&navigator.vibrate(8)}catch(_){}paintRoom()};
   const box=$("#rmChat");ROOM.pinned=true;const userScroll=()=>{ROOM.user=Date.now()};["wheel","touchstart","pointerdown","keydown"].forEach(k=>box.addEventListener(k,userScroll,{passive:true}));box.addEventListener("scroll",()=>{if(!ROOM.user||Date.now()-ROOM.user>1500)return;ROOM.pinned=box.scrollHeight-box.scrollTop-box.clientHeight<80},{passive:true});requestAnimationFrame(()=>stick(box));paintRoom()}
 function paintRoom(){if(UI.view!=="room")return;let g=roomGame();if(!g){if(!ROOM.last)return;g=ROOM.last;if(!ROOM.ended){ROOM.ended=true;pushMsg({kind:"sys",cls:"flip",html:"Replay over. That's the ballgame."})}}else{ROOM.last=g;roomStep(g);pkStep(g)}
-  const P=g.path||[],wp=P.length?Math.round(P[P.length-1][1]):50,bw=!ROOM.ended&&brewing(g);{const sc=$("#rmScore");if(sc)sc.textContent=g.as===""?"vs":`${g.as}–${g.bs}`}
+  const P=g.path||[],wp=P.length?Math.round(P[P.length-1][1]):50,bw=!ROOM.ended&&brewing(g);{const sc=$("#rmScore");if(sc&&!(ROOM.landing>Date.now()))sc.textContent=g.as===""?"vs":`${g.as}–${g.bs}`}
   $("#rmHead").innerHTML=`<span class="clk">${ROOM.ended||g.state==="pre"?"":LIVEDOT}${esc(ROOM.ended?"Final":g.state==="pre"?"Pre-match · starts "+kickTime(g)+(countdown(g)?" · "+countdown(g):""):g.clock)}${g.replay?` <span class="rptag">${g.sim?"SIMULATED":"REPLAY"}</span>`:""}</span><span>${kfmt(roomViewers(g))} ${g.state==="pre"?"here early":"watching"}</span>${g.state==="pre"?"":`<span class="wp">${wp}%<span>${esc(g.team)} win</span></span>`}`;
   $("#rmChart").innerHTML=sigSVG(P,{W:360,H:96,pad:4,live:!ROOM.ended,sw:1.6,r:3,glow:2.5});$("#rmChart").classList.toggle("brew",bw);
   $("#rmBrew").innerHTML=bw?`<div class="rmbrew"><i></i>Flip brewing · late and still in reach. Points doubled.</div>`:"";
