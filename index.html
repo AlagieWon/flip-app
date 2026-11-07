@@ -948,6 +948,11 @@ body.bleed #screen.haspill .reel.rx{padding-bottom:calc(env(safe-area-inset-bott
 .rxmeta .rrtag{margin-right:2px}
 .rxhl{margin:14px 0 0;font:750 27px/1.08 var(--display);letter-spacing:-.025em;color:#fff;text-wrap:balance;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .rxsw{display:flex;align-items:flex-end;gap:14px;margin-top:14px}
+.stk{display:flex;flex-direction:column;gap:6px;margin-top:12px;padding:10px 12px;border:1px solid #1e1e1e;border-radius:12px;background:rgba(255,255,255,.025)}
+.stk-h{font:700 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#8a8a8a}
+.stk-i{display:flex;align-items:center;gap:7px;font:500 12.5px var(--body);color:#bdbdbd;min-width:0}.stk-i>span:nth-child(2){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stk-i b{font:700 13px var(--mono);color:#e6e6e6;font-variant-numeric:tabular-nums}.stk-i b.up{color:#f5c542}.stk-a{color:#5a5a5a}
+.stk-n{font:500 10.5px var(--mono);color:#6a6a6a}
 .rxsw .r2big{font-size:64px}
 .rxwp{display:flex;flex-direction:column;gap:3px;padding-bottom:7px;font:500 13px var(--body);color:#9a9a9a}
 .rxwp b{font:700 16px var(--mono);color:#e6e6e6;font-variant-numeric:tabular-nums}.rxwp b.up{color:#f5c542}.rxwp b.dn{color:#ff5b4f}
@@ -1147,6 +1152,7 @@ body.bleed #screen.haspill .reel .r2body{bottom:calc(env(safe-area-inset-bottom,
 </style>
 </head>
 <body>
+
 
 
 <div class="stagewrap">
@@ -1447,6 +1453,8 @@ function animateReel(sec){if(!sec||sec.dataset.anim||matchMedia("(prefers-reduce
 let REELOBS=null;function watchReels(){try{REELOBS&&REELOBS.disconnect();REELOBS=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)animateReel(e.target)}),{root:scroller,threshold:.55});main.querySelectorAll(".reel.rx").forEach(r=>REELOBS.observe(r))}catch(e){}}
 function realFeed(){return REAL.filter(g=>g.moments&&g.moments.length&&g.path&&g.path.length>2).map(g=>({g,m:topSwingMoment(g)})).filter(o=>Math.abs(o.m.after-o.m.before)>=10)
   .sort((a,b)=>(b.g.state==="in")-(a.g.state==="in")||folScore(b.g.a,b.g.b)-folScore(a.g.a,a.g.b)||Math.abs(b.m.after-b.m.before)-Math.abs(a.m.after-a.m.before)).filter((o,i,l)=>l.slice(0,i).filter(z=>z.g.sport===o.g.sport).length<4).slice(0,14)}
+function stakesHTML(g,m){const s=m&&m.stakes;if(!s||!s.items||!s.items.length)return"";const nm=ab=>esc(ab===g.a?tname(g.a,g.an):ab===g.b?tname(g.b,g.bn):ab);
+  return`<div class="stk" aria-label="Season stakes"><span class="stk-h">Season stakes</span>${s.items.map(i=>`<span class="stk-i">${tb(i.team,"sm")}<span>${nm(i.team)} · ${esc(i.label)}</span><b>${i.before}%</b><span class="stk-a">→</span><b class="${i.good?"up":""}">${i.after}%</b></span>`).join("")}<span class="stk-n">Chance of finishing there, vs a ${esc(String(s.vs).replace("-","–"))} · season sim</span></div>`}
 function realReel({g,m}){const sw=m.after-m.before,live=g.state==="in";const T=g.team;
   const clk=live?String(g.clock).replace(/^.*? - /,""):(g.clock==="FT"?"Full time":"Final");
   const head=(hl({t:String((g.kind==="fb"?m.d:m.t)||m.t).replace(/\s+/g," ")})||m.t).replace(/\s+/g," ");
@@ -1454,7 +1462,7 @@ function realReel({g,m}){const sw=m.after-m.before,live=g.state==="in";const T=g
     ${sbHTML(g,`<span class="rrtag ${live?"live":""}">${live?LIVEDOT+"LIVE":"REAL"}</span>${esc(g.league)} · ${esc(clk)}`)}
     <h2 class="rxhl">${esc(head)}</h2>
     <div class="rxmeta"><span>${esc(m.cat||"Big play")} · ${esc(m.clock)}</span></div>
-    ${swHTML(sw,T,m.before,m.after,g.wpsrc==="model",`data-rwhy="${g.id}"`)}
+    ${swHTML(sw,T,m.before,m.after,g.wpsrc==="model",`data-rwhy="${g.id}"`)}${stakesHTML(g,m)}
     <div class="r2bg" data-rdeck="${g.id}" role="button" aria-label="Open every flip in this game">${sigSVG(g.path,{W:340,H:170,pad:6,sw:1.6,live})}<span class="r2tap">Tap for every flip</span></div>
     <div class="r2body"><div class="rracts"><button class="btn wht sm" data-rdeck="${g.id}">Swipe the flips</button>${live?`<button class="btn ghost sm" data-room="${g.id}">Join the room</button>`:`<button class="btn ghost sm" data-rshare="${g.id}">Share card</button>`}</div></div>
   </section>`}
@@ -1961,7 +1969,7 @@ function missSlide(g,m){const pv=v=>m.team===g.team?v:100-v;const W=360,H=240,P=
     <div class="mvbtns"><button class="mvb go" data-mvshare="${esc(m.id)}">Share card</button></div></div>`}
 function mvSlide(g,it){if(it.kind==="end")return endSlide(g);if(it.kind==="miss")return missSlide(g,it);const sw=it.after!=null?it.after-it.before:(it.sw||0);const c=momentSVG(g,it,360,240);const f=fateOf(g,it);const n=crowdN(g,it),v=myVote(g.id,it.id);const tt=topTag(g,it);
   const H=hl(it),sub=it.d&&it.d.replace(/\W+/g,"")!==it.t.replace(/\W+/g,"")?it.d:(H!==it.t?it.t:"");const pct=crowdPct(g,it);
-  return`<div class="mvhero"><span class="r2big ${sw<0?"dn":""}" data-why="${esc(it.id)}" role="button" tabindex="0" aria-label="Swing ${sgn(sw)} points. How we know">${sgn(sw)}</span><span class="r2wp">${esc(g.team)} win chance ${it.before!=null?`<b>${it.before}%</b> → <b class="${sw<0?"dn":"up"}">${it.after}%</b>`:""}</span></div>
+  return`<div class="mvhero"><span class="r2big ${sw<0?"dn":""}" data-why="${esc(it.id)}" role="button" tabindex="0" aria-label="Swing ${sgn(sw)} points. How we know">${sgn(sw)}</span><span class="r2wp">${esc(g.team)} win chance ${it.before!=null?`<b>${it.before}%</b> → <b class="${sw<0?"dn":"up"}">${it.after}%</b>`:""}</span>${stakesHTML(g,it)}</div>
    <div class="mvch" role="img" aria-label="${esc(g.team)} win chance chart. This play moved it from ${it.before} to ${it.after} percent at ${esc(it.clock)}.">${c.svg}${S.scrubbed?"":`<span class="mvhint">Hold or drag the chart to scrub</span>`}<div class="mvdot" style="left:${c.fx*100}%;top:${c.ay*100}%"></div><div class="r2ann mvann" style="left:${c.fx*100}%;top:${(c.fy+c.ay)/2*100}%"><span class="r2ac">${esc(it.clock)}</span><span class="r2av">${esc(it.ctx||it.cat||"")}</span></div></div>
    <div class="mvbody">
     <div class="r2meta"><span class="r2cat">${esc(it.cat||"Play")}</span>${f&&f.k==="erased"?`<span class="mver">Erased in the ${f.at}</span>`:f&&f.k==="held"?`<span>Held</span>`:""}${it.id===leaderOf(g)?`<span class="r2off">${g.state==="post"?"The flip":"Flip so far"}</span>`:""}</div>
