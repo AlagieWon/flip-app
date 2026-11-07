@@ -212,6 +212,10 @@ soc_out = os.path.join(BASE, f'soc_{DATE}.json')
 subprocess.run([sys.executable, os.path.join(HERE, 'pull_soccer.py'), soc_out, DATE], capture_output=True)
 soc = json.load(open(soc_out)) if os.path.exists(soc_out) else []
 for g in soc: g['date'] = 'Today'
+try:
+    import season_stakes
+    print('season stakes:', season_stakes.enrich(soc, BASE))
+except Exception as e: print('season stakes skipped', e)
 extra = os.path.join(BASE, 'mlb_sample.json')
 if os.path.exists(extra):
     try: games_x = json.load(open(extra)); games_x = games_x.get('games', games_x)
